@@ -29,14 +29,55 @@ from typing import Any, Dict, List, Optional
 from .curriculum import _make_problem
 
 
+from .cp_generator_extra import (
+    CP_QUESTION_FORMATS,
+    EXTRA_CP_GENERATORS,
+    apply_question_format,
+)
+
+
 CP_CATEGORIES: List[Dict[str, str]] = [
-    {"id": "all", "name": "All Primitives (Random Mix)"},
-    {"id": "priority_encoder", "name": "Priority Encoders & Bit Finders (Comb)"},
-    {"id": "counters", "name": "Counters, Timers & PWM (Seq)"},
-    {"id": "regslices", "name": "RegSlices, FIFOs & Elastic Stages (Seq)"},
-    {"id": "fsms", "name": "Sequence & Protocol FSMs (Seq)"},
-    {"id": "datapath", "name": "Barrel Shifters, Gray Code & DSP MAC (Comb/Seq)"},
-    {"id": "arbiters", "name": "Arbiters & Crossbar Schedulers (Comb/Seq)"},
+    {"id": "all", "name": "🌟 All 32 Hardware, Protocol, Verification & Arch Families"},
+    {"id": "priority_encoder", "name": "📦 Group: Priority Encoders, CLZ/CTZ & One-Hot Codecs"},
+    {"id": "counters", "name": "📦 Group: Counters, Ring/Johnson, Debouncers, PWM & Watchdogs"},
+    {"id": "regslices", "name": "📦 Group: RegSlices, Gearboxes, Credit FIFOs, Scramblers & Firewalls"},
+    {"id": "fsms", "name": "📦 Group: Sequence Detectors & Mealy Vending FSMs"},
+    {"id": "datapath", "name": "📦 Group: Barrel Shifters, Gray Code, Parity, Window Comp & DSP MAC"},
+    {"id": "protocols", "name": "📦 Group: AMBA APB3, AXI-Lite WSTRB, Round-Robin Arbiters & NoC Routers"},
+    {"id": "architecture", "name": "📦 Group: Branch Predictors (2-Bit BHT) & CPU Pipeline Forwarding"},
+    {"id": "verification", "name": "📦 Group: Verification Monitors & Formal Property Checkers"},
+    {"id": "prio_encoder", "name": "01. Priority Encoder (MSB/LSB, Active-High/Low)"},
+    {"id": "clz_ctz_detector", "name": "02. Leading/Trailing Zero & One Detector (CLZ/CTZ/CLO)"},
+    {"id": "onehot_therm_codec", "name": "03. One-Hot & Thermometer Codec"},
+    {"id": "gray_codec", "name": "04. Binary <-> Gray Code & Parity Codec"},
+    {"id": "crc_parity_gen", "name": "05. Configurable Multi-Lane Parity & Frame Checksum"},
+    {"id": "barrel_rotator", "name": "06. Multi-Mode Barrel Rotator & Shifter"},
+    {"id": "saturating_alu", "name": "07. Saturating DSP Arithmetic & Clamping Unit"},
+    {"id": "window_comparator", "name": "08. Programmable Window & Threshold Comparator"},
+    {"id": "modulo_counter", "name": "09. Modulo-N Programmable Step Counter"},
+    {"id": "updown_sat_counter", "name": "10. Saturating Up/Down Event Counter"},
+    {"id": "johnson_ring_counter", "name": "11. Self-Correcting Johnson / One-Hot Ring Counter"},
+    {"id": "lfsr_scrambler", "name": "12. Galois LFSR Stream Scrambler"},
+    {"id": "debounce_glitch_filter", "name": "13. N-Cycle Glitch Filter & Pin Debouncer"},
+    {"id": "pwm_timer", "name": "14. Programmable Period & Duty-Cycle PWM Timer"},
+    {"id": "watchdog_timer", "name": "15. Programmable Watchdog Timer with Timeout"},
+    {"id": "regslice_transform", "name": "16. Guarded Pipeline RegSlice with Inline Transform"},
+    {"id": "mac_engine", "name": "17. Guarded Multiply-Accumulate (MAC) Engine"},
+    {"id": "skid_credit_fifo", "name": "18. Credit-Based Flow Control Tracker"},
+    {"id": "gearbox_serializer", "name": "19. 8-to-16 Bit Packing Gearbox"},
+    {"id": "packet_firewall", "name": "20. Hardware Packet Header Firewall Filter"},
+    {"id": "pattern_fsm", "name": "21. KMP Bit-Stream Sequence Detector FSM"},
+    {"id": "vending_mealy_fsm", "name": "22. Parameterized Mealy Vending Controller FSM"},
+    {"id": "arbiter_perm", "name": "23. Custom-Permutation Masked Hardware Arbiter"},
+    {"id": "round_robin_arbiter", "name": "24. Rotating-Priority Round-Robin Arbiter"},
+    {"id": "apb_slave_periph", "name": "25. AMBA APB3 Slave Register Bank"},
+    {"id": "axi_wstrb_merger", "name": "26. AXI4-Lite Write Strobe (WSTRB) Byte Merger"},
+    {"id": "noc_xy_router", "name": "27. 2D Mesh NoC XY Dimension-Ordered Router"},
+    {"id": "branch_predictor_bht", "name": "28. 2-Bit Saturating Branch Predictor BHT"},
+    {"id": "pipeline_forwarding", "name": "29. 5-Stage CPU Pipeline Hazard Forwarding Unit"},
+    {"id": "verif_arbiter_checker", "name": "30. Verification: Arbiter Mutual-Exclusion & Work-Conserving Monitor"},
+    {"id": "verif_axi_handshake", "name": "31. Verification: AXI-Stream Ready/Valid Payload Stability Monitor"},
+    {"id": "verif_fifo_conservation", "name": "32. Verification: FIFO Occupancy & Overflow/Underflow Monitor"},
 ]
 
 
@@ -44,48 +85,36 @@ def generate_cp_problem(
     difficulty: str = "Medium",
     category: str = "all",
     seed: Optional[int] = None,
+    question_format: str = "all",
 ) -> Dict[str, Any]:
     """
-    Generate a fresh, parameterized competitive programming BSV problem.
-    All components (spec, golden BSV reference, testbench, hints) are synthesized dynamically.
+    Generate a fresh, parameterized competitive programming BSV problem across 32 families
+    and 5 interactive question formats (`design_from_spec`, `bug_fix_rtl`, `fill_in_blanks`,
+    `verification_monitor`, `reverse_engineer_mystery`).
     """
     if seed is None:
         seed = int(time.time() * 1000) % 1000000 + random.randint(1, 99999)
     rng = random.Random(seed)
 
-    difficulty_norm = difficulty.capitalize() if difficulty.lower() in ("easy", "medium", "hard") else "Medium"
+    if difficulty.lower() == "mixed":
+        difficulty_norm = rng.choice(["Easy", "Medium", "Hard"])
+    elif difficulty.lower() in ("easy", "medium", "hard"):
+        difficulty_norm = difficulty.capitalize()
+    else:
+        difficulty_norm = "Medium"
 
     cat_map = {
-        "priority_encoder": ["prio_encoder", "arbiter_perm"],
-        "counters": ["modulo_counter", "pwm_timer"],
-        "regslices": ["regslice_transform", "mac_engine"],
-        "fsms": ["pattern_fsm"],
-        "datapath": ["gray_codec", "barrel_rotator", "saturating_alu"],
-        "arbiters": ["arbiter_perm", "prio_encoder"],
+        "priority_encoder": ["prio_encoder", "clz_ctz_detector", "onehot_therm_codec", "arbiter_perm"],
+        "counters": ["modulo_counter", "updown_sat_counter", "johnson_ring_counter", "debounce_glitch_filter", "pwm_timer", "watchdog_timer"],
+        "regslices": ["regslice_transform", "gearbox_serializer", "skid_credit_fifo", "lfsr_scrambler", "packet_firewall"],
+        "fsms": ["pattern_fsm", "vending_mealy_fsm"],
+        "datapath": ["gray_codec", "crc_parity_gen", "barrel_rotator", "saturating_alu", "window_comparator", "mac_engine"],
+        "arbiters": ["arbiter_perm", "round_robin_arbiter", "prio_encoder", "noc_xy_router"],
+        "protocols": ["apb_slave_periph", "axi_wstrb_merger", "round_robin_arbiter", "skid_credit_fifo", "noc_xy_router", "packet_firewall"],
+        "architecture": ["branch_predictor_bht", "pipeline_forwarding", "noc_xy_router", "mac_engine"],
+        "verification": ["verif_arbiter_checker", "verif_axi_handshake", "verif_fifo_conservation"],
     }
 
-    if category in cat_map:
-        templates = cat_map[category]
-    else:
-        if difficulty_norm == "Easy":
-            templates = ["prio_encoder", "gray_codec", "saturating_alu", "modulo_counter"]
-        elif difficulty_norm == "Hard":
-            templates = ["pattern_fsm", "regslice_transform", "arbiter_perm", "mac_engine", "barrel_rotator"]
-        else:
-            templates = [
-                "prio_encoder",
-                "modulo_counter",
-                "regslice_transform",
-                "pattern_fsm",
-                "gray_codec",
-                "barrel_rotator",
-                "saturating_alu",
-                "pwm_timer",
-                "arbiter_perm",
-                "mac_engine",
-            ]
-
-    chosen = rng.choice(templates)
     dispatch = {
         "prio_encoder": _gen_prio_encoder,
         "modulo_counter": _gen_modulo_counter,
@@ -97,14 +126,144 @@ def generate_cp_problem(
         "pwm_timer": _gen_pwm_timer,
         "arbiter_perm": _gen_arbiter_perm,
         "mac_engine": _gen_mac_engine,
+        **EXTRA_CP_GENERATORS,
     }
+
+    if question_format == "verification_monitor" and category == "all":
+        templates = ["verif_arbiter_checker", "verif_axi_handshake", "verif_fifo_conservation"]
+    elif category in cat_map:
+        templates = cat_map[category]
+    elif category in dispatch:
+        templates = [category]
+    else:
+        if difficulty_norm == "Easy":
+            templates = [
+                "prio_encoder", "gray_codec", "saturating_alu", "modulo_counter",
+                "clz_ctz_detector", "onehot_therm_codec", "window_comparator",
+                "johnson_ring_counter", "verif_arbiter_checker",
+            ]
+        elif difficulty_norm == "Hard":
+            templates = [
+                "pattern_fsm", "regslice_transform", "arbiter_perm", "mac_engine",
+                "barrel_rotator", "gearbox_serializer", "apb_slave_periph",
+                "branch_predictor_bht", "pipeline_forwarding", "verif_axi_handshake",
+            ]
+        else:
+            templates = list(dispatch.keys())
+
+    chosen = rng.choice(templates)
     prob = dispatch[chosen](rng, seed, difficulty_norm)
     prob["mode_type"] = "cp"
     prob["seed"] = seed
     prob["cp_category"] = chosen
     prob["time_limit_sec"] = 180 if difficulty_norm == "Easy" else (300 if difficulty_norm == "Medium" else 480)
     prob["points"] = 100 if difficulty_norm == "Easy" else (250 if difficulty_norm == "Medium" else 500)
+
+    prob = apply_question_format(prob, question_format=question_format, rng=rng)
     return prob
+
+
+def generate_daily_problem(date_str: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Generate a deterministic Daily Hardware Challenge (LeetCode Daily style) for `YYYY-MM-DD`.
+    Every user on the same calendar day gets the exact same curated hardware/architecture/verification challenge!
+    """
+    import datetime as _dt
+    if not date_str:
+        date_str = _dt.date.today().isoformat()
+    digest = hashlib.sha256(f"bsvbits-daily-{date_str}".encode("utf-8")).hexdigest()
+    daily_seed = int(digest[:8], 16) % 900000 + 100000
+    rng = random.Random(daily_seed)
+    diff = rng.choice(["Easy", "Medium", "Medium", "Hard"])
+    fmt = rng.choice(["design_from_spec", "bug_fix_rtl", "verification_monitor", "reverse_engineer_mystery"])
+    prob = generate_cp_problem(difficulty=diff, category="all", seed=daily_seed, question_format=fmt)
+    prob["id"] = f"daily_{date_str.replace('-', '_')}"
+    prob["is_daily"] = True
+    prob["daily_date"] = date_str
+    prob["title"] = f"[Daily Challenge {date_str}] " + prob["title"]
+    prob["points"] = int(prob.get("points", 250) * 1.5)
+    return prob
+
+
+def generate_cp_session(
+    time_budget_min: int = 20,
+    difficulty: str = "Medium",
+    count: int = 0,
+    category: str = "all",
+    question_format: str = "all",
+    seed: Optional[int] = None,
+) -> Dict[str, Any]:
+    """
+    Generate a packaged multi-problem CP Practice Session tailored to the user's:
+      - `time_budget_min` (e.g. 5, 10, 15, 20, 30, 45, 60 minutes)
+      - `difficulty` (`Easy`, `Medium`, `Hard`, `Mixed`)
+      - `count` (`0` = auto-calculate optimal problem count from time budget & difficulty, or explicit `1..10`)
+      - `category` & `question_format`
+    """
+    if seed is None:
+        seed = int(time.time() * 1000) % 1000000 + random.randint(1, 99999)
+    rng = random.Random(seed)
+
+    avg_min_per_prob = 4 if difficulty == "Easy" else (7 if difficulty in ("Medium", "Mixed") else 10)
+    if question_format in ("fill_in_blanks", "bug_fix_rtl"):
+        avg_min_per_prob = max(3, avg_min_per_prob - 2)
+
+    if count <= 0:
+        count = max(1, min(8, round(max(5, time_budget_min) / avg_min_per_prob)))
+
+    session_id = f"sess_{seed}"
+    problems: List[Dict[str, Any]] = []
+    used_categories: List[str] = []
+
+    for i in range(count):
+        if difficulty.lower() == "mixed":
+            if i == 0:
+                p_diff = "Easy"
+            elif i == count - 1 and count >= 3:
+                p_diff = "Hard"
+            else:
+                p_diff = "Medium"
+        else:
+            p_diff = difficulty
+
+        sub_seed = seed + (i + 1) * 7919
+        prob = generate_cp_problem(
+            difficulty=p_diff,
+            category=category,
+            seed=sub_seed,
+            question_format=question_format,
+        )
+        # Ensure variety across session problems
+        tries = 0
+        while prob["cp_category"] in used_categories and tries < 5:
+            sub_seed += 101
+            prob = generate_cp_problem(
+                difficulty=p_diff,
+                category=category,
+                seed=sub_seed,
+                question_format=question_format,
+            )
+            tries += 1
+
+        used_categories.append(prob["cp_category"])
+        # Scale per-problem time limit so the session fits the user's time budget
+        per_prob_sec = max(60, int((time_budget_min * 60) / count))
+        prob["time_limit_sec"] = per_prob_sec
+        prob["session_index"] = i + 1
+        prob["session_total"] = count
+        problems.append(prob)
+
+    return {
+        "session_id": session_id,
+        "time_budget_min": time_budget_min,
+        "time_budget_sec": time_budget_min * 60,
+        "difficulty": difficulty,
+        "category": category,
+        "question_format": question_format,
+        "problem_count": count,
+        "problems": problems,
+    }
+
 
 
 def _gen_prio_encoder(rng: random.Random, seed: int, difficulty: str) -> Dict[str, Any]:

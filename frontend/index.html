@@ -27,17 +27,21 @@
     <!-- Mode Switcher: Mode 1 (HDLBits Progression) vs Mode 2 (Competitive Hardware Arena) -->
     <nav class="mode-switcher" aria-label="Platform Mode">
       <button class="mode-btn active" id="btn-mode-curriculum" onclick="switchPlatformMode('curriculum')">
-        <span>1. Guided Progression (HDLBits Mode)</span>
-        <span class="mode-pill" id="curriculum-progress-pill">0 / 32</span>
+        <span>1. Guided Progression (8 Tracks)</span>
+        <span class="mode-pill" id="curriculum-progress-pill">0 / 79</span>
       </button>
       <button class="mode-btn" id="btn-mode-cp" onclick="switchPlatformMode('cp')">
-        <span>2. Competitive Arena (CP Generator)</span>
+        <span>2. Competitive Arena (32 Families)</span>
         <span class="mode-pill" id="cp-rating-pill">1200 ELO</span>
       </button>
     </nav>
 
-    <!-- VS Code Sync & Settings Actions -->
+    <!-- Shared SQLite User State, VS Code Sync & Settings Actions -->
     <div class="topbar-actions">
+      <div class="stat-chip" id="user-db-chip" title="SQLite3 DBMS Shared User State (Synced between VS Code &amp; Web)">
+        <span>🗄 User:</span>
+        <strong id="active-user-display" style="color:var(--accent-cyan);cursor:pointer;" onclick="promptSwitchUser()">default</strong>
+      </div>
       <div class="stat-chip" id="cp-timer-chip" title="Competitive Speedrun Timer">
         <span>Timer:</span>
         <strong id="cp-timer-display">00:00</strong>
@@ -49,8 +53,8 @@
       <button class="btn" id="btn-vscode-pull" onclick="pullFromVsCode()" title="Load code saved in workspace/current_problem.bsv from VS Code">
         <span>⇄ Sync VS Code</span>
       </button>
-      <button class="btn" id="btn-llm-settings" onclick="openSettingsModal()" title="Configure Smart Evaluator &amp; Optional LLM API Key">
-        <span>⚙ Evaluator / LLM</span>
+      <button class="btn" id="btn-llm-settings" onclick="openSettingsModal()" title="Configure User Profile, SQLite DBMS &amp; Optional LLM API Key">
+        <span>⚙ Profile &amp; LLM</span>
       </button>
     </div>
   </header>
@@ -61,12 +65,20 @@
     <aside class="sidebar" id="left-sidebar">
       <div class="sidebar-header" id="sidebar-curriculum-header">
         <div class="sidebar-title-row">
-          <span>Curriculum Tracks (6)</span>
-          <span id="sidebar-progress-label">0/32 Solved</span>
+          <span>Curriculum Tracks (8)</span>
+          <span id="sidebar-progress-label">0/79 Solved</span>
         </div>
         <div class="progress-bar-outer">
           <div class="progress-bar-inner" id="sidebar-progress-bar" style="width: 0%;"></div>
         </div>
+        <input
+          type="text"
+          class="form-input"
+          id="curriculum-search-input"
+          placeholder="Filter 79 problems (e.g. CDC, CReg, Verification, RISC-V)..."
+          oninput="filterCurriculumSidebar(this.value)"
+          style="margin-top:6px;padding:5px 8px;font-size:11.5px;"
+        />
       </div>
 
       <div class="sidebar-scroll" id="sidebar-content">
@@ -209,13 +221,17 @@
       </div>
       <div style="font-size:12.5px;color:var(--text-secondary);line-height:1.55;">
         <p style="margin-bottom:8px;">
-          <strong>1. Built-in Hybrid Evaluator (Always Active):</strong> Co-simulates your module cycle-by-cycle against the Golden Reference in <code>Bluesim</code>, automatically adapts minor method/module naming variations, and performs AST construct + schedule analysis.
+          <strong>1. Bundled SQLite3 Relational DBMS (<code>workspace/bsvbits.db</code>):</strong> Tracks your solved curriculum problems, ELO rating, streaks, saved code, and CP sessions, shared in real time between this Website and the VS Code IDE (<code>./bsvbits user &lt;username&gt;</code>).
         </p>
         <p>
           <strong>2. VS Code Live Workspace File:</strong><br/>
           <code id="modal-vscode-path" style="color:var(--accent-cyan);">workspace/current_problem.bsv</code><br/>
           Open this repository in VS Code and press <code>Ctrl+Shift+B</code> (or run <code>./bsvbits submit</code>) to evaluate directly from VS Code!
         </p>
+      </div>
+      <div>
+        <label class="form-label" for="input-username">Active Shared User Profile (Synced with VS Code &amp; SQLite DBMS)</label>
+        <input class="form-input" id="input-username" type="text" value="default" placeholder="e.g. default, alice, rtl_master" />
       </div>
       <div>
         <label class="form-label" for="input-llm-key">Optional OpenAI / Gemini Compatible API Key</label>
@@ -232,7 +248,7 @@
         </div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
-        <button class="btn btn-primary" id="btn-save-settings" onclick="saveSettingsModal()">Save Configuration</button>
+        <button class="btn btn-primary" id="btn-save-settings" onclick="saveSettingsModal()">Save &amp; Sync Profile</button>
       </div>
     </div>
   </div>

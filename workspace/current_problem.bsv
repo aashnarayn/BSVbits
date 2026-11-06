@@ -1,6 +1,7 @@
 // ============================================================================
 // BSVbits Active Problem: 01. Constant Zero Output (Your First BSV Method) (01_wire_zero)
-// Mode: CURRICULUM | Difficulty: Easy | Editor Mode: SNIPPET
+// User: default (SQLite Shared State) | Mode: CURRICULUM (design_from_spec)
+// Difficulty: Easy | Editor Mode: SNIPPET
 // ----------------------------------------------------------------------------
 // Interface Contract (Automatically imported via ProblemTypes):
 //   interface WireZeroIfc;

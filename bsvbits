@@ -69,17 +69,60 @@ def cmd_next(state: BSVBitsState) -> int:
     return cmd_start(state, next_id, state.data.get("editor_mode", "snippet"))
 
 
-def cmd_generate(state: BSVBitsState, difficulty: str, category: str, seed: int | None) -> int:
-    prob = state.generate_new_cp(difficulty=difficulty, category=category, seed=seed)
-    print("=" * 80)
+def cmd_generate(state: BSVBitsState, difficulty: str, category: str, seed: int | None, q_fmt: str = "all") -> int:
+    prob = state.generate_new_cp(difficulty=difficulty, category=category, seed=seed, question_format=q_fmt)
+    print("=" * 84)
     print(f" NEW COMPETITIVE HARDWARE PROBLEM GENERATED: {prob['title']}")
-    print(f" ID: {prob['id']} | Difficulty: {prob['difficulty']} | Points: {prob['points']} | Time Limit: {prob['time_limit_sec']}s")
-    print("=" * 80)
+    print(f" ID: {prob['id']} | Format: {prob.get('question_format')} | Difficulty: {prob['difficulty']} | Points: {prob['points']} | Time Limit: {prob['time_limit_sec']}s")
+    print("=" * 84)
     print(prob["diagram"])
-    print("-" * 80)
+    print("-" * 84)
     print(prob["interface_def"])
-    print("-" * 80)
-    print(f"Staged into VS Code workspace:\n  • {VSCODE_BSV_FILE}\n  • {VSCODE_PROBLEM_MD}")
+    print("-" * 84)
+    print(f"Staged into VS Code workspace (User: {state.username}):\n  • {VSCODE_BSV_FILE}\n  • {VSCODE_PROBLEM_MD}")
+    return 0
+
+
+def cmd_daily(state: BSVBitsState, date_str: str | None = None) -> int:
+    prob = state.start_daily_challenge(date_str)
+    print("=" * 84)
+    print(f" 🌟 DAILY HARDWARE CHALLENGE ({prob.get('daily_date')}): {prob['title']}")
+    print(f" ID: {prob['id']} | Format: {prob.get('question_format')} | Difficulty: {prob['difficulty']} | Bonus Points: {prob['points']}")
+    print("=" * 84)
+    print(prob["diagram"])
+    print("-" * 84)
+    print(prob["interface_def"])
+    print("-" * 84)
+    print(f"Staged into VS Code workspace (User: {state.username}):\n  • {VSCODE_BSV_FILE}\n  • {VSCODE_PROBLEM_MD}")
+    return 0
+
+
+def cmd_session(state: BSVBitsState, time_min: int, difficulty: str, count: int, category: str, q_fmt: str) -> int:
+    res = state.start_cp_session(
+        time_budget_min=time_min,
+        difficulty=difficulty,
+        count=count,
+        category=category,
+        question_format=q_fmt,
+    )
+    sess = res["session"]
+    probs = res["problems"]
+    print("=" * 84)
+    print(f" 🎯 PACKAGED CP SESSION STARTED: {sess.get('title')}")
+    print(f" Session ID: {sess.get('session_id')} | Time Budget: {time_min} min | Problems: {len(probs)}")
+    print("=" * 84)
+    for idx, p in enumerate(probs, start=1):
+        print(f"  [{idx}/{len(probs)}] {p['id']:22s} | {p['difficulty']:6s} | {p.get('question_format', 'design'):22s} | {p['title']}")
+    print("-" * 84)
+    print(f"Problem #1 staged into VS Code workspace:\n  • {VSCODE_BSV_FILE}\n  • {VSCODE_PROBLEM_MD}")
+    return 0
+
+
+def cmd_user(state: BSVBitsState, username: str) -> int:
+    state.switch_user(username)
+    print(f"Switched active BSVbits user (shared across VS Code & Web UI via SQLite DBMS) to: '{state.username}'")
+    print(f"  Curriculum Solved : {len(state.data.get('solved_curriculum', []))}/{len(CURRICULUM_PROBLEMS)}")
+    print(f"  CP Arena Rating   : {state.data.get('cp_rating', 1200)} ELO (Streak: {state.data.get('cp_streak', 0)}, Daily Streak: {state.data.get('daily_streak', 0)})")
     return 0
 
 
@@ -90,7 +133,7 @@ def cmd_submit(state: BSVBitsState) -> int:
     if user_code is None:
         user_code = state.get_user_code(prob, editor_mode)
 
-    print(f"Compiling & Co-Simulating `{prob['title']}` ({prob['id']}) with Bluespec `bsc`...")
+    print(f"Compiling & Co-Simulating `{prob['title']}` ({prob['id']}) for user `{state.username}` with Bluespec `bsc`...")
     res = evaluate_submission(prob, user_code, mode=editor_mode)
     res_dict = res.to_dict()
     state.record_evaluation(prob, user_code, editor_mode, res_dict)
@@ -163,14 +206,14 @@ def cmd_solution(state: BSVBitsState) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="BSVbits CLI & VS Code Runner")
+    parser = argparse.ArgumentParser(description="BSVbits CLI & VS Code Runner (Backed by SQLite3 DBMS)")
     sub = parser.add_subparsers(dest="cmd")
 
     p_serve = sub.add_parser("serve", help="Launch BSVbits Web IDE & VS Code Sync Server")
     p_serve.add_argument("--port", type=int, default=8000)
     p_serve.add_argument("--host", type=str, default="0.0.0.0")
 
-    sub.add_parser("list", help="List all curriculum problems")
+    sub.add_parser("list", help="List all 79 curriculum problems across 8 tracks")
 
     p_start = sub.add_parser("start", help="Stage a curriculum problem into workspace/current_problem.bsv")
     p_start.add_argument("problem_id", type=str)
@@ -179,9 +222,23 @@ def main() -> int:
     sub.add_parser("next", help="Stage the next curriculum problem")
 
     p_gen = sub.add_parser("generate", help="Generate a new Competitive Arena problem")
-    p_gen.add_argument("--difficulty", choices=["Easy", "Medium", "Hard"], default="Medium")
+    p_gen.add_argument("--difficulty", choices=["Easy", "Medium", "Hard", "Mixed"], default="Medium")
     p_gen.add_argument("--category", type=str, default="all")
+    p_gen.add_argument("--format", type=str, default="all", help="design_from_spec | bug_fix_rtl | fill_in_blanks | verification_monitor | reverse_engineer_mystery")
     p_gen.add_argument("--seed", type=int, default=None)
+
+    p_daily = sub.add_parser("daily", help="Stage today's Daily Hardware Challenge (LeetCode Daily style)")
+    p_daily.add_argument("--date", type=str, default=None)
+
+    p_sess = sub.add_parser("session", help="Start a packaged multi-problem CP Practice Session")
+    p_sess.add_argument("--time", type=int, default=20, help="Available time budget in minutes (e.g. 10, 20, 30, 60)")
+    p_sess.add_argument("--difficulty", choices=["Easy", "Medium", "Hard", "Mixed"], default="Medium")
+    p_sess.add_argument("--count", type=int, default=0, help="Number of problems (0 = auto-calculate from time & difficulty)")
+    p_sess.add_argument("--category", type=str, default="all")
+    p_sess.add_argument("--format", type=str, default="all")
+
+    p_user = sub.add_parser("user", help="Switch active user profile (shared between VS Code and Web UI via SQLite)")
+    p_user.add_argument("username", type=str)
 
     sub.add_parser("submit", help="Compile & evaluate workspace/current_problem.bsv with bsc")
 
@@ -189,7 +246,7 @@ def main() -> int:
     p_hint.add_argument("--level", type=int, default=1)
 
     sub.add_parser("solution", help="Show Golden Reference BSV solution")
-    sub.add_parser("verify-all", help="Run full bsc test suite on all curriculum and CP problems")
+    sub.add_parser("verify-all", help="Run full bsc test suite on all 79 curriculum and 32 CP generator families")
 
     args = parser.parse_args()
     state = BSVBitsState()
@@ -201,7 +258,13 @@ def main() -> int:
     elif args.cmd == "next":
         return cmd_next(state)
     elif args.cmd == "generate":
-        return cmd_generate(state, args.difficulty, args.category, args.seed)
+        return cmd_generate(state, args.difficulty, args.category, args.seed, args.format)
+    elif args.cmd == "daily":
+        return cmd_daily(state, args.date)
+    elif args.cmd == "session":
+        return cmd_session(state, args.time, args.difficulty, args.count, args.category, args.format)
+    elif args.cmd == "user":
+        return cmd_user(state, args.username)
     elif args.cmd == "submit":
         return cmd_submit(state)
     elif args.cmd == "hint":
@@ -221,3 +284,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

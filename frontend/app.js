@@ -10,14 +10,20 @@
    ========================================================================== */
 
 const appState = {
+  username: 'default',
   platformMode: 'curriculum', // 'curriculum' | 'cp'
   editorMode: 'snippet',      // 'snippet' | 'full'
   curriculumTracks: [],
+  curriculumSearchQuery: '',
   cpCategories: [],
+  cpQuestionFormats: [],
   solvedCurriculum: [],
-  totalCurriculum: 32,
+  totalCurriculum: 79,
   cpRating: 1200,
   cpStreak: 0,
+  dailyStreak: 0,
+  activeSession: null,
+  cpHistory: [],
   activeProblem: null,
   lastEvaluation: null,
   activeWorkbenchTab: 'wave',
@@ -28,6 +34,9 @@ const appState = {
   timerInterval: null,
   cpDifficultyFilter: 'Medium',
   cpCategoryFilter: 'all',
+  cpFormatFilter: 'all',
+  cpTimeBudgetMin: 20,
+  cpSessionCount: 0, // 0 = Auto-fit to time
   llmConfig: {
     apiKey: localStorage.getItem('bsvbits_llm_key') || '',
     apiBase: localStorage.getItem('bsvbits_llm_base') || 'https://api.openai.com/v1',
@@ -188,12 +197,18 @@ async function loadInitialData() {
     fetch('/api/curriculum').then((r) => r.json()),
   ]);
 
+  appState.username = statusRes.username || 'default';
   appState.curriculumTracks = currRes.tracks || [];
   appState.cpCategories = currRes.cp_categories || [];
+  appState.cpQuestionFormats = currRes.cp_question_formats || statusRes.cp_question_formats || [];
   appState.solvedCurriculum = statusRes.solved_curriculum || [];
-  appState.totalCurriculum = statusRes.total_curriculum || 32;
+  appState.totalCurriculum = statusRes.total_curriculum || 79;
   appState.cpRating = statusRes.cp_rating || 1200;
   appState.cpStreak = statusRes.cp_streak || 0;
+  appState.dailyStreak = statusRes.daily_streak || 0;
+  appState.lastDailyDate = statusRes.last_daily_date || '';
+  appState.activeSession = statusRes.active_session || null;
+  appState.cpHistory = statusRes.cp_history || [];
   appState.platformMode = statusRes.active_mode || 'curriculum';
   appState.editorMode = statusRes.editor_mode || 'snippet';
 
@@ -215,10 +230,15 @@ async function loadInitialData() {
 
 function updateHeaderIndicators() {
   const solvedCount = appState.solvedCurriculum.length;
-  const totalCount = appState.totalCurriculum || 32;
+  const totalCount = appState.totalCurriculum || 79;
   document.getElementById('curriculum-progress-pill').textContent = `${solvedCount} / ${totalCount}`;
   document.getElementById('cp-rating-pill').textContent = `${appState.cpRating} ELO`;
   document.getElementById('cp-streak-display').textContent = `${appState.cpStreak} 🔥`;
+
+  const userBtn = document.getElementById('active-user-display');
+  if (userBtn) {
+    userBtn.textContent = `🗄 User: ${appState.username}`;
+  }
 
   document.getElementById('btn-mode-curriculum').classList.toggle('active', appState.platformMode === 'curriculum');
   document.getElementById('btn-mode-cp').classList.toggle('active', appState.platformMode === 'cp');
@@ -233,6 +253,11 @@ function updateHeaderIndicators() {
   if (lbl) lbl.textContent = `${solvedCount}/${totalCount} Solved (${pct}%)`;
 }
 
+function filterCurriculumSidebar(query) {
+  appState.curriculumSearchQuery = (query || '').trim().toLowerCase();
+  renderSidebar();
+}
+
 function renderSidebar() {
   const container = document.getElementById('sidebar-content');
   const header = document.getElementById('sidebar-curriculum-header');
@@ -241,12 +266,27 @@ function renderSidebar() {
     header.style.display = 'flex';
     const solvedSet = new Set(appState.solvedCurriculum);
     const activeId = appState.activeProblem ? appState.activeProblem.id : '';
+    const q = appState.curriculumSearchQuery || '';
 
     let html = '';
     for (const track of appState.curriculumTracks) {
+      const filteredProbs = track.problems.filter((p) => {
+        if (!q) return true;
+        return (
+          p.title.toLowerCase().includes(q) ||
+          p.id.toLowerCase().includes(q) ||
+          (p.tags || []).some((t) => t.toLowerCase().includes(q))
+        );
+      });
+      if (filteredProbs.length === 0) continue;
+
+      const trackSolved = track.problems.filter((p) => solvedSet.has(p.id)).length;
       html += `<div class="track-group">`;
-      html += `<div class="track-header" title="${escapeHtml(track.subtitle)}">${escapeHtml(track.title)}</div>`;
-      for (const p of track.problems) {
+      html += `<div class="track-header" title="${escapeHtml(track.subtitle)}" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>${escapeHtml(track.title)}</span>
+        <span style="font-size:10px;color:var(--text-muted);">${trackSolved}/${track.problems.length}</span>
+      </div>`;
+      for (const p of filteredProbs) {
         const isSolved = solvedSet.has(p.id);
         const isActive = p.id === activeId;
         html += `
@@ -261,38 +301,139 @@ function renderSidebar() {
       }
       html += `</div>`;
     }
-    container.innerHTML = html;
+    container.innerHTML = html || `<div style="padding:12px;color:var(--text-muted);font-size:12px;">No curriculum problems match "${escapeHtml(q)}".</div>`;
   } else {
     header.style.display = 'none';
     const catOptions = appState.cpCategories
       .map((c) => `<option value="${c.id}" ${c.id === appState.cpCategoryFilter ? 'selected' : ''}>${escapeHtml(c.name)}</option>`)
       .join('');
 
+    const fmtOptions = (appState.cpQuestionFormats.length
+      ? appState.cpQuestionFormats
+      : [
+          { id: 'all', name: 'All 5 Question Formats (Mixed)' },
+          { id: 'design_from_spec', name: '1. RTL Module Design from Spec' },
+          { id: 'bug_fix_rtl', name: '2. Hardware Bug Hunt & RTL Repair' },
+          { id: 'fill_in_blanks', name: '3. Fill-in-the-Blanks Microarchitecture' },
+          { id: 'verification_monitor', name: '4. Verification & Spec Compliance' },
+          { id: 'reverse_engineer_mystery', name: '5. Reverse-Engineer Mystery Spec' },
+        ]
+    )
+      .map((f) => `<option value="${f.id}" ${f.id === appState.cpFormatFilter ? 'selected' : ''}>${escapeHtml(f.name)}</option>`)
+      .join('');
+
+    const activeId = appState.activeProblem ? appState.activeProblem.id : '';
+    let sessionCardHtml = '';
+    if (appState.activeSession && appState.activeSession.problems && appState.activeSession.problems.length > 0) {
+      const sess = appState.activeSession;
+      const solvedInSess = sess.problems.filter((p) => p.solved).length;
+      const itemsHtml = sess.problems
+        .map((p, idx) => {
+          const isAct = p.id === activeId;
+          return `
+            <button class="problem-item ${isAct ? 'active' : ''}" onclick="selectCpProblem('${p.id}')" style="margin-top:3px;">
+              <span class="prob-left">
+                <span class="status-icon ${p.solved ? 'solved' : ''}">${p.solved ? '✓' : idx + 1}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title.replace(/^\[Session #\d+\]\s*/, ''))}</span>
+              </span>
+              <span class="diff-badge diff-${p.difficulty}">${p.difficulty}</span>
+            </button>
+          `;
+        })
+        .join('');
+      sessionCardHtml = `
+        <div class="section-card" style="padding:10px;border-color:var(--accent-cyan);">
+          <div class="section-card-title" style="margin-bottom:4px;">
+            <span>🎯 Active Session (${solvedInSess}/${sess.problems.length})</span>
+            <span style="color:var(--accent-amber);">${sess.time_budget_minutes}m budget</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">
+            Est. Time: ~${sess.estimated_total_minutes || sess.time_budget_minutes} min | Mode: ${escapeHtml(sess.difficulty)}
+          </div>
+          <div>${itemsHtml}</div>
+        </div>
+      `;
+    }
+
     container.innerHTML = `
+      <div class="section-card" style="padding:11px;border-color:rgba(245, 158, 11, 0.45);background:linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(17, 23, 34, 0.95));">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-weight:700;font-size:12.5px;color:var(--accent-amber);">🌟 Daily Hardware Challenge</span>
+          <span class="tag-chip" style="color:var(--accent-amber);">${appState.dailyStreak || 0}d Daily Streak</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:8px;">
+          Deterministic daily hardware, protocol, or architecture challenge shared across all users today.
+        </div>
+        <button class="btn btn-amber" onclick="startDailyChallenge()" style="width:100%;justify-content:center;padding:6px 10px;">
+          🌟 Launch Today's Daily Challenge
+        </button>
+      </div>
+
+      ${sessionCardHtml}
+
       <div class="cp-gen-box">
         <div style="font-weight:700;font-size:13px;color:var(--accent-cyan);">
-          ⚡ Dynamic Hardware Generator
+          ⚡ Practice Pack &amp; Problem Synthesizer
         </div>
-        <div style="font-size:12px;color:var(--text-secondary);">
-          Synthesizes fresh, parameterized RTL challenges (Priority Encoders, Modulo Counters, RegSlices, Sequence FSMs, Gray Codecs, Barrel Rotators, Arbiters, MACs) with on-hand Golden BSV Solutions &amp; Testbenches.
+        <div style="font-size:11.5px;color:var(--text-secondary);">
+          32 hardware, protocol, CDC, verification &amp; computer architecture families across 5 question styles.
         </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div>
+            <label class="form-label" for="cp-time-select">Time Budget</label>
+            <select class="form-select" id="cp-time-select" onchange="appState.cpTimeBudget = parseInt(this.value, 10)">
+              <option value="10" ${appState.cpTimeBudget === 10 ? 'selected' : ''}>10 mins (Sprint)</option>
+              <option value="20" ${appState.cpTimeBudget === 20 ? 'selected' : ''}>20 mins (Standard)</option>
+              <option value="30" ${appState.cpTimeBudget === 30 ? 'selected' : ''}>30 mins (Deep)</option>
+              <option value="45" ${appState.cpTimeBudget === 45 ? 'selected' : ''}>45 mins (Contest)</option>
+              <option value="60" ${appState.cpTimeBudget === 60 ? 'selected' : ''}>60 mins (Marathon)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" for="cp-count-select">Problem Count</label>
+            <select class="form-select" id="cp-count-select" onchange="appState.cpSessionCount = parseInt(this.value, 10)">
+              <option value="0" ${appState.cpSessionCount === 0 ? 'selected' : ''}>Auto-Fit to Time</option>
+              <option value="2" ${appState.cpSessionCount === 2 ? 'selected' : ''}>2 Problems</option>
+              <option value="3" ${appState.cpSessionCount === 3 ? 'selected' : ''}>3 Problems</option>
+              <option value="5" ${appState.cpSessionCount === 5 ? 'selected' : ''}>5 Problems</option>
+              <option value="8" ${appState.cpSessionCount === 8 ? 'selected' : ''}>8 Problems</option>
+            </select>
+          </div>
+        </div>
+
         <div>
           <label class="form-label" for="cp-diff-select">Difficulty Tier</label>
           <select class="form-select" id="cp-diff-select" onchange="appState.cpDifficultyFilter = this.value">
-            <option value="Easy" ${appState.cpDifficultyFilter === 'Easy' ? 'selected' : ''}>Easy (+25 ELO)</option>
-            <option value="Medium" ${appState.cpDifficultyFilter === 'Medium' ? 'selected' : ''}>Medium (+45 ELO)</option>
-            <option value="Hard" ${appState.cpDifficultyFilter === 'Hard' ? 'selected' : ''}>Hard (+75 ELO)</option>
+            <option value="Mixed" ${appState.cpDifficultyFilter === 'Mixed' ? 'selected' : ''}>Progressive Mix (Easy → Hard)</option>
+            <option value="Easy" ${appState.cpDifficultyFilter === 'Easy' ? 'selected' : ''}>Easy (+25 ELO / ~5m)</option>
+            <option value="Medium" ${appState.cpDifficultyFilter === 'Medium' ? 'selected' : ''}>Medium (+45 ELO / ~10m)</option>
+            <option value="Hard" ${appState.cpDifficultyFilter === 'Hard' ? 'selected' : ''}>Hard (+75 ELO / ~18m)</option>
           </select>
         </div>
+
         <div>
-          <label class="form-label" for="cp-cat-select">Hardware Primitive Family</label>
+          <label class="form-label" for="cp-fmt-select">Question Format</label>
+          <select class="form-select" id="cp-fmt-select" onchange="appState.cpFormatFilter = this.value">
+            ${fmtOptions}
+          </select>
+        </div>
+
+        <div>
+          <label class="form-label" for="cp-cat-select">Hardware / Architecture Family (32 Families)</label>
           <select class="form-select" id="cp-cat-select" onchange="appState.cpCategoryFilter = this.value">
             ${catOptions}
           </select>
         </div>
-        <button class="btn btn-cyan" id="btn-generate-cp-now" onclick="generateNewCpChallenge()" style="width:100%;padding:8px;">
-          ⚡ Generate New CP Challenge
-        </button>
+
+        <div style="display:flex;gap:6px;flex-direction:column;">
+          <button class="btn btn-primary" id="btn-start-cp-session" onclick="startCpSession()" style="width:100%;justify-content:center;padding:7px;">
+            🎯 Start Timed Practice Pack Session
+          </button>
+          <button class="btn btn-cyan" id="btn-generate-cp-now" onclick="generateNewCpChallenge()" style="width:100%;justify-content:center;padding:7px;">
+            ⚡ Generate Single CP Problem
+          </button>
+        </div>
       </div>
 
       <div class="section-card" style="padding:12px;">
@@ -303,7 +444,7 @@ function renderSidebar() {
             <div style="color:var(--accent-cyan);font-size:16px;font-weight:700;">${appState.cpRating}</div>
           </div>
           <div style="background:var(--bg-root);padding:8px;border-radius:4px;">
-            <div style="color:var(--text-muted);font-size:10.5px;">STREAK</div>
+            <div style="color:var(--text-muted);font-size:10.5px;">SOLVE STREAK</div>
             <div style="color:var(--accent-amber);font-size:16px;font-weight:700;">${appState.cpStreak} 🔥</div>
           </div>
         </div>
@@ -343,16 +484,86 @@ async function selectCurriculumProblem(problemId) {
   renderSidebar();
 }
 
+async function selectCpProblem(problemId) {
+  const res = await fetch('/api/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      problem_id: problemId,
+      mode_type: 'cp',
+      editor_mode: appState.editorMode,
+    }),
+  }).then((r) => r.json());
+
+  appState.platformMode = 'cp';
+  loadProblemIntoView(res.problem);
+  updateHeaderIndicators();
+  renderSidebar();
+}
+
+async function startDailyChallenge() {
+  const res = await fetch('/api/cp/daily', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  }).then((r) => r.json());
+
+  appState.platformMode = 'cp';
+  appState.cpRating = res.cp_rating || appState.cpRating;
+  appState.cpStreak = res.cp_streak || appState.cpStreak;
+  appState.dailyStreak = res.daily_streak || appState.dailyStreak;
+  loadProblemIntoView(res.problem);
+  updateHeaderIndicators();
+  renderSidebar();
+}
+
+async function startCpSession() {
+  const timeEl = document.getElementById('cp-time-select');
+  const countEl = document.getElementById('cp-count-select');
+  const diffEl = document.getElementById('cp-diff-select');
+  const catEl = document.getElementById('cp-cat-select');
+  const fmtEl = document.getElementById('cp-fmt-select');
+
+  const time_budget_minutes = timeEl ? parseInt(timeEl.value, 10) : appState.cpTimeBudget;
+  const countVal = countEl ? parseInt(countEl.value, 10) : appState.cpSessionCount;
+  const difficulty = diffEl ? diffEl.value : appState.cpDifficultyFilter;
+  const category = catEl ? catEl.value : appState.cpCategoryFilter;
+  const question_format = fmtEl ? fmtEl.value : appState.cpFormatFilter;
+
+  const res = await fetch('/api/cp/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      time_budget_minutes,
+      problem_count: countVal > 0 ? countVal : null,
+      difficulty,
+      category,
+      question_format,
+    }),
+  }).then((r) => r.json());
+
+  appState.platformMode = 'cp';
+  appState.activeSession = res.session || null;
+  if (res.problem) {
+    loadProblemIntoView(res.problem);
+  }
+  updateHeaderIndicators();
+  renderSidebar();
+}
+
 async function generateNewCpChallenge() {
   const diffEl = document.getElementById('cp-diff-select');
   const catEl = document.getElementById('cp-cat-select');
-  const difficulty = diffEl ? diffEl.value : appState.cpDifficultyFilter;
+  const fmtEl = document.getElementById('cp-fmt-select');
+  const rawDiff = diffEl ? diffEl.value : appState.cpDifficultyFilter;
+  const difficulty = rawDiff === 'Mixed' ? 'Medium' : rawDiff;
   const category = catEl ? catEl.value : appState.cpCategoryFilter;
+  const question_format = fmtEl ? fmtEl.value : appState.cpFormatFilter;
 
   const res = await fetch('/api/cp/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ difficulty, category }),
+    body: JSON.stringify({ difficulty, category, question_format }),
   }).then((r) => r.json());
 
   appState.platformMode = 'cp';
@@ -369,7 +580,9 @@ function loadProblemIntoView(prob) {
   appState.timerSeconds = 0;
 
   document.getElementById('prob-title').textContent = prob.title;
-  document.getElementById('prob-id-label').textContent = `ID: ${prob.id} | Module: ${prob.module_name}`;
+  const fmtBadge = prob.question_format_label ? ` | Format: ${prob.question_format_label}` : '';
+  const estBadge = prob.estimated_minutes ? ` | ~${prob.estimated_minutes}m` : '';
+  document.getElementById('prob-id-label').textContent = `ID: ${prob.id} | Module: ${prob.module_name}${fmtBadge}${estBadge}`;
   const diffBadge = document.getElementById('prob-diff-badge');
   diffBadge.textContent = prob.difficulty;
   diffBadge.className = `diff-badge diff-${prob.difficulty}`;
@@ -441,6 +654,10 @@ async function submitToBsc() {
     appState.solvedCurriculum = res.solved_curriculum || appState.solvedCurriculum;
     appState.cpRating = res.cp_rating || appState.cpRating;
     appState.cpStreak = res.cp_streak || appState.cpStreak;
+    appState.dailyStreak = res.daily_streak || appState.dailyStreak;
+    if (res.active_session) {
+      appState.activeSession = res.active_session;
+    }
 
     if (!res.evaluation.compiled) {
       appState.activeWorkbenchTab = 'compiler';
@@ -800,7 +1017,23 @@ function startSpeedrunTimer() {
   }, 1000);
 }
 
+async function promptSwitchUser() {
+  const nextUser = window.prompt(
+    'Enter shared BSVbits username (stored in SQLite workspace/bsvbits.db and synced with VS Code):',
+    appState.username || 'default'
+  );
+  if (!nextUser || !nextUser.trim()) return;
+  await fetch('/api/user/switch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: nextUser.trim() }),
+  });
+  await loadInitialData();
+}
+
 function openSettingsModal() {
+  const userEl = document.getElementById('input-username');
+  if (userEl) userEl.value = appState.username || 'default';
   document.getElementById('input-llm-key').value = appState.llmConfig.apiKey;
   document.getElementById('input-llm-base').value = appState.llmConfig.apiBase;
   document.getElementById('input-llm-model').value = appState.llmConfig.model;
@@ -811,7 +1044,9 @@ function closeSettingsModal() {
   document.getElementById('settings-modal').classList.remove('open');
 }
 
-function saveSettingsModal() {
+async function saveSettingsModal() {
+  const userEl = document.getElementById('input-username');
+  const nextUser = userEl ? userEl.value.trim() : '';
   appState.llmConfig.apiKey = document.getElementById('input-llm-key').value.trim();
   appState.llmConfig.apiBase = document.getElementById('input-llm-base').value.trim();
   appState.llmConfig.model = document.getElementById('input-llm-model').value.trim();
@@ -819,6 +1054,14 @@ function saveSettingsModal() {
   localStorage.setItem('bsvbits_llm_base', appState.llmConfig.apiBase);
   localStorage.setItem('bsvbits_llm_model', appState.llmConfig.model);
   closeSettingsModal();
+  if (nextUser && nextUser !== appState.username) {
+    await fetch('/api/user/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: nextUser }),
+    });
+    await loadInitialData();
+  }
 }
 
 function escapeHtml(str) {

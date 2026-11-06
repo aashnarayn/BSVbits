@@ -1,26 +1,28 @@
 """
 FastAPI Backend for BSVbits:
   - Serves the interactive Web IDE (Monaco VS Code editor + Waveform Viewer + Schedule & RTL Inspector)
-  - Provides REST endpoints for Mode 1 (HDLBits Guided Progression) and Mode 2 (Dynamic CP Arena)
-  - Background watcher that detects edits to `workspace/current_problem.bsv` in VS Code and automatically evaluates or syncs!
+  - Backed by the bundled SQLite3 Relational DBMS (`workspace/bsvbits.db`) shared with VS Code
+  - Provides REST endpoints for Mode 1 (HDLBits Guided Progression across 8 Tracks & 79 Problems)
+    and Mode 2 (Dynamic CP Arena across 32 Hardware/Protocol/Arch/Verification Families, 5 Question Formats,
+    Daily Challenges, and Packaged Time/Count Practice Sessions)
 """
 
 from __future__ import annotations
 
 import asyncio
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .compiler import find_bsc
-from .cp_generator import CP_CATEGORIES
-from .curriculum import CURRICULUM_BY_ID, CURRICULUM_PROBLEMS, CURRICULUM_TRACKS
+from .cp_generator import CP_CATEGORIES, CP_QUESTION_FORMATS
+from .curriculum import CURRICULUM_PROBLEMS, CURRICULUM_TRACKS
+from .db import get_cp_problem_db
 from .evaluator import evaluate_submission, generate_contextual_hint
 from .state import BSVBitsState, VSCODE_BSV_FILE
 
@@ -29,7 +31,7 @@ FRONTEND_DIR = REPO_ROOT / "frontend"
 
 app = FastAPI(
     title="BSVbits — Bluespec SystemVerilog Learning & Competitive Hardware Platform",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -60,7 +62,26 @@ class SelectProblemRequest(BaseModel):
 class GenerateCpRequest(BaseModel):
     difficulty: str = "Medium"
     category: str = "all"
+    question_format: str = "all"
     seed: Optional[int] = None
+
+
+class DailyCpRequest(BaseModel):
+    date_str: Optional[str] = None
+
+
+class StartCpSessionRequest(BaseModel):
+    time_budget_min: int = 20
+    time_budget_minutes: Optional[int] = None
+    difficulty: str = "Medium"
+    count: int = 0  # 0 = Auto-fit to time budget
+    problem_count: Optional[int] = None
+    category: str = "all"
+    question_format: str = "all"
+
+
+class SwitchUserRequest(BaseModel):
+    username: str
 
 
 class HintRequest(BaseModel):
@@ -99,8 +120,35 @@ async def _vscode_file_watcher_loop() -> None:
             pass
 
 
+def _serialize_session(sess: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not sess:
+        return None
+    probs_meta = []
+    est_total = 0
+    for pid in sess.get("problem_ids", []):
+        p = get_cp_problem_db(pid)
+        if p:
+            est_m = int(p.get("estimated_minutes", 8))
+            est_total += est_m
+            probs_meta.append({
+                "id": p["id"],
+                "title": p["title"],
+                "difficulty": p.get("difficulty", "Medium"),
+                "question_format": p.get("question_format", "design_from_spec"),
+                "estimated_minutes": est_m,
+                "solved": p["id"] in sess.get("completed_ids", []) or bool(p.get("solved")),
+            })
+    out = dict(sess)
+    out["problems_meta"] = probs_meta
+    out["problems"] = probs_meta
+    out["time_budget_minutes"] = int(sess.get("time_budget_sec", 1200) // 60)
+    out["estimated_total_minutes"] = est_total or out["time_budget_minutes"]
+    return out
+
+
 @app.get("/api/status")
 def get_status() -> Dict[str, Any]:
+    state.load()
     try:
         bsc_bin, lib_dir = find_bsc()
         bsc_ready = True
@@ -114,6 +162,9 @@ def get_status() -> Dict[str, Any]:
         "bsc_ready": bsc_ready,
         "bsc_path": bsc_bin,
         "bluespecdir": lib_dir,
+        "username": state.username,
+        "db_engine": state.data.get("db_engine", "SQLite3 (bsvbits.db)"),
+        "users": state.data.get("users", []),
         "active_mode": state.data.get("active_mode", "curriculum"),
         "editor_mode": editor_mode,
         "active_problem": _serialize_problem_for_client(active_prob, editor_mode),
@@ -122,14 +173,34 @@ def get_status() -> Dict[str, Any]:
         "cp_rating": state.data.get("cp_rating", 1200),
         "cp_streak": state.data.get("cp_streak", 0),
         "cp_solved_count": state.data.get("cp_solved_count", 0),
+        "daily_streak": state.data.get("daily_streak", 0),
+        "active_session": _serialize_session(state.data.get("active_session")),
+        "cp_history": [
+            {
+                "id": p["id"],
+                "title": p["title"],
+                "difficulty": p.get("difficulty", "Medium"),
+                "question_format": p.get("question_format", "design_from_spec"),
+                "solved": bool(p.get("solved")),
+                "is_daily": bool(p.get("is_daily")),
+            }
+            for p in state.data.get("cp_history", [])[:15]
+        ],
         "submissions": state.data.get("submissions", [])[:20],
         "vscode_workspace_file": str(VSCODE_BSV_FILE),
         "last_eval_result": state.data.get("last_eval_result"),
     }
 
 
+@app.post("/api/user/switch")
+def switch_user(req: SwitchUserRequest) -> Dict[str, Any]:
+    state.switch_user(req.username)
+    return get_status()
+
+
 @app.get("/api/curriculum")
 def get_curriculum() -> Dict[str, Any]:
+    state.load()
     solved = set(state.data.get("solved_curriculum", []))
     tracks_out = []
     for t in CURRICULUM_TRACKS:
@@ -155,6 +226,7 @@ def get_curriculum() -> Dict[str, Any]:
         "solved_count": len(solved),
         "total_count": len(CURRICULUM_PROBLEMS),
         "cp_categories": CP_CATEGORIES,
+        "cp_question_formats": CP_QUESTION_FORMATS,
     }
 
 
@@ -173,18 +245,59 @@ def select_problem(req: SelectProblemRequest) -> Dict[str, Any]:
         "active_mode": state.data.get("active_mode"),
         "editor_mode": mode,
         "problem": _serialize_problem_for_client(prob, mode),
+        "active_session": _serialize_session(state.data.get("active_session")),
         "vscode_file": str(VSCODE_BSV_FILE),
     }
 
 
 @app.post("/api/cp/generate")
 def generate_cp(req: GenerateCpRequest) -> Dict[str, Any]:
-    prob = state.generate_new_cp(difficulty=req.difficulty, category=req.category, seed=req.seed)
+    prob = state.generate_new_cp(
+        difficulty=req.difficulty,
+        category=req.category,
+        seed=req.seed,
+        question_format=req.question_format,
+    )
     mode = state.data.get("editor_mode", "snippet")
     return {
         "active_mode": "cp",
         "editor_mode": mode,
         "problem": _serialize_problem_for_client(prob, mode),
+        "cp_rating": state.data.get("cp_rating", 1200),
+        "cp_streak": state.data.get("cp_streak", 0),
+        "daily_streak": state.data.get("daily_streak", 0),
+    }
+
+
+@app.post("/api/cp/daily")
+def generate_daily_cp(req: DailyCpRequest) -> Dict[str, Any]:
+    prob = state.start_daily_challenge(req.date_str)
+    mode = state.data.get("editor_mode", "snippet")
+    return {
+        "active_mode": "cp",
+        "editor_mode": mode,
+        "problem": _serialize_problem_for_client(prob, mode),
+        "cp_rating": state.data.get("cp_rating", 1200),
+        "cp_streak": state.data.get("cp_streak", 0),
+        "daily_streak": state.data.get("daily_streak", 0),
+    }
+
+
+@app.post("/api/cp/session")
+def start_cp_session(req: StartCpSessionRequest) -> Dict[str, Any]:
+    res = state.start_cp_session(
+        time_budget_min=req.time_budget_min,
+        difficulty=req.difficulty,
+        count=req.count,
+        category=req.category,
+        question_format=req.question_format,
+    )
+    mode = state.data.get("editor_mode", "snippet")
+    return {
+        "active_mode": "cp",
+        "editor_mode": mode,
+        "session": _serialize_session(res["session"]),
+        "problem": _serialize_problem_for_client(res["active_problem"], mode),
         "cp_rating": state.data.get("cp_rating", 1200),
         "cp_streak": state.data.get("cp_streak", 0),
     }
@@ -201,7 +314,6 @@ def submit_solution(req: SubmitRequest) -> Dict[str, Any]:
     eval_res = evaluate_submission(prob, req.code, mode=req.editor_mode, llm_config=llm_cfg)
     eval_dict = eval_res.to_dict()
     state.record_evaluation(prob, req.code, req.editor_mode, eval_dict)
-    # Also keep VS Code workspace file synced with the submitted code
     state.sync_to_vscode_workspace()
     return {
         "evaluation": eval_dict,
@@ -209,6 +321,8 @@ def submit_solution(req: SubmitRequest) -> Dict[str, Any]:
         "cp_rating": state.data.get("cp_rating", 1200),
         "cp_streak": state.data.get("cp_streak", 0),
         "cp_solved_count": state.data.get("cp_solved_count", 0),
+        "daily_streak": state.data.get("daily_streak", 0),
+        "active_session": _serialize_session(state.data.get("active_session")),
         "submissions": state.data.get("submissions", [])[:20],
     }
 
@@ -272,6 +386,9 @@ def _serialize_problem_for_client(prob: Dict[str, Any], editor_mode: str = "snip
         "track_id": prob.get("track_id", ""),
         "track_title": prob.get("track_title", ""),
         "difficulty": prob.get("difficulty", "Easy"),
+        "question_format": prob.get("question_format", "design_from_spec"),
+        "is_daily": bool(prob.get("is_daily", False)),
+        "daily_date": prob.get("daily_date", ""),
         "tags": prob.get("tags", []),
         "description": prob.get("description", ""),
         "bsv_vs_verilog": prob.get("bsv_vs_verilog", ""),
@@ -286,7 +403,7 @@ def _serialize_problem_for_client(prob: Dict[str, Any], editor_mode: str = "snip
         "active_code": state.get_user_code(prob, editor_mode),
         "hints_count": len(prob.get("hints", [])),
         "mode_type": prob.get("mode_type", "curriculum"),
-        "solved": prob["id"] in solved,
+        "solved": (prob["id"] in solved) or bool(prob.get("solved")),
         "time_limit_sec": prob.get("time_limit_sec", 300),
         "points": prob.get("points", 100),
         "seed": prob.get("seed"),

@@ -550,7 +550,7 @@ def evaluate_submission_with_bsc(
             "-sim",
             "-show-schedule",
             "-suppress-warnings",
-            "T0157:S0073",
+            "T0157:S0073:S0080",
             "-p",
             bPath,
             "-bdir",

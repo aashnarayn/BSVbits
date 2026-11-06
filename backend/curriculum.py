@@ -115,34 +115,45 @@ CURRICULUM_TRACKS: List[Dict[str, str]] = [
     {
         "id": "track1_combinational",
         "title": "1. BSV Basics & Combinational Logic",
-        "subtitle": "Wires, Value Methods, Logic Gates, Multiplexers, Bit Slicing & Adders",
+        "subtitle": "Wires, Constants, Universal Gates, Adders, Decoders, LUTs, Parity, Comparators, BCD, CLZ & Combination Labs",
     },
     {
         "id": "track2_types",
         "title": "2. Strong Types, Enums, Structs & Vectors",
-        "subtitle": "Type-safe Hardware with Enums, Structs, Maybe#(t) Tagged Unions & Vectors",
+        "subtitle": "Enums, Tagged Unions, Structs, Maybe#(t), Vector SIMD Lanes, NZCV Flag ALUs & 2x2 Crossbar Switches",
     },
     {
         "id": "track3_sequential",
         "title": "3. Sequential Circuits, Registers & Rules",
-        "subtitle": "D Flip-Flops (mkReg), Atomic Rules, Counters, LFSRs, Edge Detectors & Euclid's GCD",
+        "subtitle": "mkReg, DReg Pulses, Decade BCD Counters, Universal Shift Registers, LFSRs, Debouncers, Stopwatches & GCD",
     },
     {
         "id": "track4_concurrency",
-        "title": "4. Concurrency, Scheduling, Ehr & FIFOs",
-        "subtitle": "Rule Conflicts, RWire, Ephemeral History Registers (Ehr), and Elastic Pipelines",
+        "title": "4. Concurrency, Scheduling, CReg/Ehr & Advanced FIFOs",
+        "subtitle": "RWire, PulseWire, descending_urgency, 3-Port CReg/Ehr, Bypass RegFile, SpecialFIFOs, GetPut/Connectable & Gearboxes",
     },
     {
         "id": "track5_fsms",
         "title": "5. Finite State Machines & StmtFSM",
-        "subtitle": "Sequence Detectors, Traffic Controllers, UART Serial Framing & Microcoded StmtFSM",
+        "subtitle": "Sequence Detectors, Vending Machine FSM, Traffic Controllers, UART 8N1, SPI Master & Microcoded StmtFSM",
+    },
+    {
+        "id": "track7_cdc",
+        "title": "6. Clock Domain Crossing (CDC) & Synchronizers",
+        "subtitle": "Clocks Package Principles: 2-FF SyncBit, Toggle Pulse Synchronizer, Reset Stretcher, Gray Async FIFO & MCP Handshake",
+    },
+    {
+        "id": "track9_verification",
+        "title": "7. Verification, Testbenches & Property Checkers",
+        "subtitle": "Synthesizable Scoreboards, FIFO Invariant Checkers, Arbiter Mutex Assertions, AXI Stability Monitors, Coverage & Bug Hunts",
     },
     {
         "id": "track6_architecture",
-        "title": "6. RTL Protocols & Computer Architecture",
-        "subtitle": "Round-Robin Arbiters, Credit Flow Control, AXI-Lite, Multiply, Cache & Mini RISC-V",
+        "title": "8. RTL Protocols & Computer Architecture",
+        "subtitle": "Round-Robin Arbiter, Credit Flow, APB3, AXI4-Lite, NoC XY Router, 2-Way LRU Cache, 2-Bit BHT, Forwarding, Scoreboard & RISC-V",
     },
 ]
+
 
 
 def _build_all_problems() -> List[Dict[str, Any]]:
@@ -379,7 +390,7 @@ endinterface
         Bit#(4) u3 = user_dut.gateXor(a, b);
         Bit#(4) u4 = user_dut.gateNand(a, b);
         Bool ok = (r1 == u1) && (r2 == u2) && (r3 == u3) && (r4 == u4);
-        $display("@WAVE cycle=%0d|in=a:0x%01h,b:0x%01h|ref=and:0x%01h,or:0x%01h,xor:0x%01h,nand:0x%01h|user=and:0x%01h,or:0x%01h,xor:0x%01h,nand:0x%01h|match=%0d|note=Gates", cycle, a, r1, r2, r3, r4, u1, u2, u3, u4, ok ? 1 : 0);
+        $display("@WAVE cycle=%0d|in=a:0x%01h,b:0x%01h|ref=and:0x%01h,or:0x%01h,xor:0x%01h,nand:0x%01h|user=and:0x%01h,or:0x%01h,xor:0x%01h,nand:0x%01h|match=%0d|note=Gates", cycle, a, b, r1, r2, r3, r4, u1, u2, u3, u4, ok ? 1 : 0);
         let np = passed_cnt + (ok ? 1 : 0);
         passed_cnt <= np;
         if (cycle == 7) begin
@@ -3186,8 +3197,24 @@ endinterface
         ],
     ))
 
+    import re as _re
+    from backend.curriculum_extra import build_extra_problems
+    problems.extend(build_extra_problems(_make_problem))
+
+    track_order = {t["id"]: idx for idx, t in enumerate(CURRICULUM_TRACKS)}
+    track_titles = {t["id"]: t["title"] for t in CURRICULUM_TRACKS}
+
+    problems.sort(key=lambda p: (track_order.get(p["track_id"], 99), p["id"]))
+
+    for idx, p in enumerate(problems, start=1):
+        p["number"] = idx
+        p["track_title"] = track_titles.get(p["track_id"], p["track_title"])
+        clean_title = _re.sub(r"^\d+\.\s*", "", p["title"])
+        p["title"] = f"{idx:02d}. {clean_title}"
+
     return problems
 
 
 CURRICULUM_PROBLEMS: List[Dict[str, Any]] = _build_all_problems()
 CURRICULUM_BY_ID: Dict[str, Dict[str, Any]] = {p["id"]: p for p in CURRICULUM_PROBLEMS}
+

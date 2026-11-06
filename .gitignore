@@ -8,5 +8,8 @@ __pycache__/
 *.o
 sim_out
 workspace/.bsvbits_state.json
+workspace/bsvbits.db*
+workspace/.active_user
 tools/bsc/
 .env
+
