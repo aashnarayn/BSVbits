@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.bo
+*.ba
+*.vcd
+*.sched
+*.so
+*.o
+sim_out
+workspace/.bsvbits_state.json
+tools/bsc/
+.env

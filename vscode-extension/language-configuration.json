@@ -1,0 +1,26 @@
+{
+  "comments": {
+    "lineComment": "//",
+    "blockComment": ["/*", "*/"]
+  },
+  "brackets": [
+    ["{", "}"],
+    ["[", "]"],
+    ["(", ")"],
+    ["begin", "end"],
+    ["module", "endmodule"],
+    ["interface", "endinterface"],
+    ["rule", "endrule"],
+    ["method", "endmethod"],
+    ["function", "endfunction"],
+    ["case", "endcase"],
+    ["seq", "endseq"],
+    ["par", "endpar"]
+  ],
+  "autoClosingPairs": [
+    { "open": "{", "close": "}" },
+    { "open": "[", "close": "]" },
+    { "open": "(", "close": ")" },
+    { "open": "\"", "close": "\"" }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "BSV Register Instantiation": {
+    "prefix": "reg",
+    "body": [
+      "Reg#(Bit#(${1:8})) ${2:r} <- mkReg(${3:0});"
+    ],
+    "description": "Instantiate a Bluespec Register (mkReg)"
+  },
+  "BSV Ehr Instantiation": {
+    "prefix": "ehr",
+    "body": [
+      "Ehr#(${1:2}, Bit#(${2:16})) ${3:ehr} <- mkEhr(${4:0});"
+    ],
+    "description": "Instantiate an Ephemeral History Register (MIT 6.175 Ehr)"
+  },
+  "BSV FIFOF Instantiation": {
+    "prefix": "fifof",
+    "body": [
+      "FIFOF#(Bit#(${1:16})) ${2:q} <- mkFIFOF;"
+    ],
+    "description": "Instantiate a FIFOF queue"
+  },
+  "BSV Rule": {
+    "prefix": "rule",
+    "body": [
+      "rule ${1:ruleName}${2: (${3:guard})};",
+      "    $0",
+      "endrule"
+    ],
+    "description": "Define an atomic BSV rule"
+  },
+  "BSV Value Method": {
+    "prefix": "mval",
+    "body": [
+      "method ${1:Bit#(8)} ${2:methodName}(${3}) ${4:if (${5:True})};",
+      "    return ${0:0};",
+      "endmethod"
+    ],
+    "description": "Define a BSV Value Method"
+  },
+  "BSV Action Method": {
+    "prefix": "mact",
+    "body": [
+      "method Action ${1:methodName}(${2}) ${3:if (${4:True})};",
+      "    $0",
+      "endmethod"
+    ],
+    "description": "Define a BSV Action Method"
+  },
+  "BSV ActionValue Method": {
+    "prefix": "mav",
+    "body": [
+      "method ActionValue#(${1:Bit#(8)}) ${2:methodName}(${3}) ${4:if (${5:True})};",
+      "    $0",
+      "    return ${6:0};",
+      "endmethod"
+    ],
+    "description": "Define a BSV ActionValue Method"
+  },
+  "BSV Enum Typedef": {
+    "prefix": "tenum",
+    "body": [
+      "typedef enum {",
+      "    ${1:S_IDLE},",
+      "    ${2:S_RUN}",
+      "} ${3:State} deriving (Bits, Eq);"
+    ],
+    "description": "Define a BSV enum with deriving (Bits, Eq)"
+  },
+  "BSV Struct Typedef": {
+    "prefix": "tstruct",
+    "body": [
+      "typedef struct {",
+      "    Bit#(${1:8}) ${2:field1};",
+      "    Bool ${3:valid};",
+      "} ${4:MyStruct} deriving (Bits, Eq);"
+    ],
+    "description": "Define a BSV struct with deriving (Bits, Eq)"
+  }
+}

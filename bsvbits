@@ -1,0 +1,223 @@
+#!/usr/bin/env python3
+"""
+BSVbits CLI & VS Code Task Runner
+=================================
+Commands:
+  ./bsvbits serve [--port 8000]                     Launch Web IDE & VS Code Live Sync Server
+  ./bsvbits list                                    List all 32 Curriculum problems & progress
+  ./bsvbits start <problem_id> [--mode snippet|full] Stage problem into workspace/current_problem.bsv
+  ./bsvbits next                                    Advance to the next Curriculum problem
+  ./bsvbits generate [--difficulty Medium] [--category all]
+                                                    Generate a new Competitive Arena problem into VS Code
+  ./bsvbits submit                                  Compile & co-simulate workspace/current_problem.bsv with bsc
+  ./bsvbits hint [--level 0|1|2]                    Get progressive clue & structural AST guidance
+  ./bsvbits solution                                Display the Golden Reference BSV solution
+  ./bsvbits verify-all                              Verify all 32 curriculum & 10 CP generators with bsc
+"""
+
+from __future__ import annotations
+
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from backend.curriculum import CURRICULUM_BY_ID, CURRICULUM_PROBLEMS, CURRICULUM_TRACKS
+from backend.evaluator import evaluate_submission, generate_contextual_hint
+from backend.state import BSVBitsState, VSCODE_BSV_FILE, VSCODE_PROBLEM_MD, VSCODE_RESULT_MD
+
+
+def cmd_list(state: BSVBitsState) -> int:
+    solved = set(state.data.get("solved_curriculum", []))
+    active_id = state.get_active_problem()["id"]
+    print("=" * 84)
+    print(f" BSVbits Guided Progression Curriculum ({len(solved)}/{len(CURRICULUM_PROBLEMS)} Solved)")
+    print(f" CP Arena Rating: {state.data.get('cp_rating', 1200)} ELO | Streak: {state.data.get('cp_streak', 0)}")
+    print("=" * 84)
+    for t in CURRICULUM_TRACKS:
+        print(f"\n[{t['title']}] — {t['subtitle']}")
+        for p in CURRICULUM_PROBLEMS:
+            if p["track_id"] != t["id"]:
+                continue
+            mark = "✔" if p["id"] in solved else " "
+            cur = "👉" if p["id"] == active_id else "  "
+            print(f"  {cur} [{mark}] {p['id']:32s} | {p['difficulty']:6s} | {p['title']}")
+    print("\nTip: Run `./bsvbits start <problem_id>` to stage a problem into `workspace/current_problem.bsv`.")
+    return 0
+
+
+def cmd_start(state: BSVBitsState, problem_id: str, editor_mode: str) -> int:
+    if problem_id not in CURRICULUM_BY_ID:
+        print(f"Error: Unknown problem_id '{problem_id}'. Run `./bsvbits list` to see valid IDs.")
+        return 1
+    prob = state.select_problem(problem_id, mode_type="curriculum", editor_mode=editor_mode)
+    print(f"Staged Problem: {prob['title']} ({prob['id']})")
+    print(f"  Code File : {VSCODE_BSV_FILE}")
+    print(f"  Spec File : {VSCODE_PROBLEM_MD}")
+    print("Open `workspace/current_problem.bsv` in VS Code, write your solution, and run `./bsvbits submit`!")
+    return 0
+
+
+def cmd_next(state: BSVBitsState) -> int:
+    cur_id = state.data.get("active_problem_id", "01_wire_zero")
+    ids = [p["id"] for p in CURRICULUM_PROBLEMS]
+    idx = ids.index(cur_id) if cur_id in ids else -1
+    next_id = ids[(idx + 1) % len(ids)]
+    return cmd_start(state, next_id, state.data.get("editor_mode", "snippet"))
+
+
+def cmd_generate(state: BSVBitsState, difficulty: str, category: str, seed: int | None) -> int:
+    prob = state.generate_new_cp(difficulty=difficulty, category=category, seed=seed)
+    print("=" * 80)
+    print(f" NEW COMPETITIVE HARDWARE PROBLEM GENERATED: {prob['title']}")
+    print(f" ID: {prob['id']} | Difficulty: {prob['difficulty']} | Points: {prob['points']} | Time Limit: {prob['time_limit_sec']}s")
+    print("=" * 80)
+    print(prob["diagram"])
+    print("-" * 80)
+    print(prob["interface_def"])
+    print("-" * 80)
+    print(f"Staged into VS Code workspace:\n  • {VSCODE_BSV_FILE}\n  • {VSCODE_PROBLEM_MD}")
+    return 0
+
+
+def cmd_submit(state: BSVBitsState) -> int:
+    prob = state.get_active_problem()
+    editor_mode = state.data.get("editor_mode", "snippet")
+    user_code = state.read_from_vscode_workspace()
+    if user_code is None:
+        user_code = state.get_user_code(prob, editor_mode)
+
+    print(f"Compiling & Co-Simulating `{prob['title']}` ({prob['id']}) with Bluespec `bsc`...")
+    res = evaluate_submission(prob, user_code, mode=editor_mode)
+    res_dict = res.to_dict()
+    state.record_evaluation(prob, user_code, editor_mode, res_dict)
+
+    print("=" * 80)
+    if res.passed:
+        print(f" ✅ ACCEPTED! Passed {res.passed_tests}/{res.total_tests} cycle-accurate Bluesim tests ({res.execution_time_ms} ms)")
+    elif res.compiled:
+        print(f" ❌ SIMULATION MISMATCH: Passed {res.passed_tests}/{res.total_tests} tests (First mismatch at cycle {res.first_mismatch_cycle})")
+    else:
+        print(" ❌ BSC COMPILATION FAILED")
+    print("=" * 80)
+
+    if res.diagnostics:
+        print("\n[BSC Compiler Diagnostics]")
+        for d in res.diagnostics:
+            print(f"  • [{d.severity.upper()} {d.code}] Line {d.line}: {d.message}")
+            if d.friendly_hint:
+                print(f"    💡 BSV Explanation: {d.friendly_hint}")
+
+    if res.waveform:
+        print("\n[Cycle-by-Cycle Co-Simulation Waveform (Golden Ref vs Yours)]")
+        for w in res.waveform[:16]:
+            in_s = ", ".join(f"{k}={v}" for k, v in w.signals.items())
+            rf_s = ", ".join(f"{k}={v}" for k, v in w.ref_outputs.items())
+            us_s = ", ".join(f"{k}={v}" for k, v in w.user_outputs.items())
+            badge = "OK" if w.match else "MISMATCH <--"
+            print(f"  Cycle {w.cycle:2d} | In({in_s}) | Ref({rf_s}) | Yours({us_s}) | {badge}")
+
+    ai = res.ai_review
+    print("\n[Smart Semantic & Hardware Review]")
+    print(f"  Idiomatic BSV Score : {ai.get('idiomatic_score', 0)}/100")
+    print(f"  Hardware Metrics    : {res.metrics.reg_count} Regs, {res.metrics.wire_count} Wires, {res.metrics.rule_count} Rules, {res.metrics.method_count} Methods")
+    print(f"  Summary             : {ai.get('summary', '')}")
+    for note in ai.get("approaches_accepted", []):
+        print(f"  ✓ {note}")
+    for clue in ai.get("clues", []):
+        print(f"  💡 Clue: {clue}")
+    print(f"\nFull report written to: {VSCODE_RESULT_MD}")
+    return 0 if res.passed else 1
+
+
+def cmd_hint(state: BSVBitsState, level: int) -> int:
+    prob = state.get_active_problem()
+    editor_mode = state.data.get("editor_mode", "snippet")
+    user_code = state.read_from_vscode_workspace() or state.get_user_code(prob, editor_mode)
+    info = generate_contextual_hint(prob, user_code, hint_level=level)
+    print("=" * 80)
+    print(f" Progressive Clues for: {prob['title']}")
+    print("=" * 80)
+    for i, h in enumerate(info["all_unlocked_hints"]):
+        print(f"  Clue #{i+1}: {h}")
+    print("\n[Live Structural Analysis of Your Code vs Golden Model]")
+    for tip in info["live_structural_tips"]:
+        print(f"  • {tip}")
+    if info.get("bsv_vs_verilog_note"):
+        print(f"\n[BSV vs Verilog Insight]\n  {info['bsv_vs_verilog_note']}")
+    return 0
+
+
+def cmd_solution(state: BSVBitsState) -> int:
+    prob = state.get_active_problem()
+    print("=" * 80)
+    print(f" Golden Reference Solution for: {prob['title']} ({prob['id']})")
+    print("=" * 80)
+    print(f"module {prob['module_name']}({prob['interface_name']});")
+    print(prob["reference_snippet"])
+    print("endmodule")
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="BSVbits CLI & VS Code Runner")
+    sub = parser.add_subparsers(dest="cmd")
+
+    p_serve = sub.add_parser("serve", help="Launch BSVbits Web IDE & VS Code Sync Server")
+    p_serve.add_argument("--port", type=int, default=8000)
+    p_serve.add_argument("--host", type=str, default="0.0.0.0")
+
+    sub.add_parser("list", help="List all curriculum problems")
+
+    p_start = sub.add_parser("start", help="Stage a curriculum problem into workspace/current_problem.bsv")
+    p_start.add_argument("problem_id", type=str)
+    p_start.add_argument("--mode", choices=["snippet", "full"], default="snippet")
+
+    sub.add_parser("next", help="Stage the next curriculum problem")
+
+    p_gen = sub.add_parser("generate", help="Generate a new Competitive Arena problem")
+    p_gen.add_argument("--difficulty", choices=["Easy", "Medium", "Hard"], default="Medium")
+    p_gen.add_argument("--category", type=str, default="all")
+    p_gen.add_argument("--seed", type=int, default=None)
+
+    sub.add_parser("submit", help="Compile & evaluate workspace/current_problem.bsv with bsc")
+
+    p_hint = sub.add_parser("hint", help="Get progressive clue for current problem")
+    p_hint.add_argument("--level", type=int, default=1)
+
+    sub.add_parser("solution", help="Show Golden Reference BSV solution")
+    sub.add_parser("verify-all", help="Run full bsc test suite on all curriculum and CP problems")
+
+    args = parser.parse_args()
+    state = BSVBitsState()
+
+    if args.cmd == "list":
+        return cmd_list(state)
+    elif args.cmd == "start":
+        return cmd_start(state, args.problem_id, args.mode)
+    elif args.cmd == "next":
+        return cmd_next(state)
+    elif args.cmd == "generate":
+        return cmd_generate(state, args.difficulty, args.category, args.seed)
+    elif args.cmd == "submit":
+        return cmd_submit(state)
+    elif args.cmd == "hint":
+        return cmd_hint(state, args.level)
+    elif args.cmd == "solution":
+        return cmd_solution(state)
+    elif args.cmd == "verify-all":
+        return subprocess.call([sys.executable, str(REPO_ROOT / "scripts" / "verify_curriculum.py")])
+    else:
+        port = getattr(args, "port", 8000)
+        host = getattr(args, "host", "0.0.0.0")
+        import uvicorn
+        print(f"Starting BSVbits Web Platform & VS Code Sync Server on http://localhost:{port} ...")
+        uvicorn.run("backend.app:app", host=host, port=port, reload=False)
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

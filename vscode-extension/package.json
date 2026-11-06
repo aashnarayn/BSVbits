@@ -1,0 +1,77 @@
+{
+  "name": "bsvbits-vscode",
+  "displayName": "BSVbits — Bluespec SystemVerilog IDE & Trainer",
+  "description": "Bluespec SystemVerilog (BSV) syntax highlighting, snippets, BSC compiler integration, and BSVbits Learning/CP commands for VS Code.",
+  "version": "1.0.0",
+  "publisher": "bsvbits",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Education",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:bsv",
+    "onCommand:bsvbits.submit",
+    "onCommand:bsvbits.hint",
+    "onCommand:bsvbits.generateCp",
+    "onCommand:bsvbits.nextProblem"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "bsv",
+        "aliases": [
+          "Bluespec SystemVerilog",
+          "BSV",
+          "bsv"
+        ],
+        "extensions": [
+          ".bsv"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "bsv",
+        "scopeName": "source.bsv",
+        "path": "./syntaxes/bsv.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "bsv",
+        "path": "../.vscode/bsv.code-snippets"
+      }
+    ],
+    "commands": [
+      {
+        "command": "bsvbits.submit",
+        "title": "BSVbits: Submit & Verify Current Problem (bsc + Bluesim)"
+      },
+      {
+        "command": "bsvbits.hint",
+        "title": "BSVbits: Get Progressive Clue / Hint"
+      },
+      {
+        "command": "bsvbits.generateCp",
+        "title": "BSVbits: Generate New Competitive Arena Problem"
+      },
+      {
+        "command": "bsvbits.nextProblem",
+        "title": "BSVbits: Next Curriculum Problem"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "bsvbits.submit",
+        "key": "ctrl+alt+enter",
+        "when": "editorTextFocus"
+      }
+    ]
+  }
+}

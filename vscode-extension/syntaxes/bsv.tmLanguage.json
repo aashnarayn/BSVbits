@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Bluespec SystemVerilog",
+  "scopeName": "source.bsv",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#attributes" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#numbers" },
+    { "include": "#strings" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.bsv", "match": "//.*$" },
+        { "name": "comment.block.bsv", "begin": "/\\*", "end": "\\*/" }
+      ]
+    },
+    "attributes": {
+      "patterns": [
+        { "name": "meta.attribute.bsv", "match": "\\(\\*.*?\\*\\)" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.bsv",
+          "match": "\\b(package|endpackage|import|export|module|endmodule|interface|endinterface|rule|endrule|method|endmethod|function|endfunction|typedef|struct|enum|tagged|union|deriving|provisos|begin|end|if|else|case|endcase|default|for|while|seq|endseq|par|endpar|action|endaction|actionvalue|endactionvalue|return|let|matches|valueOf|fromInteger|zeroExtend|signExtend|truncate|pack|unpack|isValid|fromMaybe|replicateM)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.bsv",
+          "match": "\\b(Bit|UInt|Int|Bool|Integer|Empty|Action|ActionValue|Reg|Ehr|FIFO|FIFOF|Vector|Maybe|Valid|Invalid|True|False|RWire|PulseWire|Stmt|FSM)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.bsv",
+          "match": "\\b(\\d+'[bBhHdDoO][0-9a-fA-F_xXzZ]+|\\d+)\\b"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.bsv",
+      "begin": "\"",
+      "end": "\""
+    }
+  }
+}

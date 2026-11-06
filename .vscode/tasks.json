@@ -1,0 +1,71 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "BSVbits: Submit & Verify Active Problem (bsc + Bluesim + Smart Review)",
+      "type": "shell",
+      "command": "./bsvbits submit",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BSVbits: Get Progressive Clue / Hint for Current Problem",
+      "type": "shell",
+      "command": "./bsvbits hint",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "BSVbits: Generate New Competitive Arena Problem (Medium)",
+      "type": "shell",
+      "command": "./bsvbits generate --difficulty Medium",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "BSVbits: Advance to Next Curriculum Problem",
+      "type": "shell",
+      "command": "./bsvbits next",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "BSVbits: Show Golden Reference Solution",
+      "type": "shell",
+      "command": "./bsvbits solution",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "BSVbits: Launch Web IDE & Waveform Server",
+      "type": "shell",
+      "command": "./bsvbits serve",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}
