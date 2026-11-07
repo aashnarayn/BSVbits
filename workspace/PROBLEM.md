@@ -1,4 +1,4 @@
-# 01. Constant Zero Output (Your First BSV Method)
+# 001. Constant Zero Output (Your First BSV Method)
 
 - **ID**: `01_wire_zero` | **User**: `default` (SQLite DBMS Shared State)
 - **Track**: 1. BSV Basics & Combinational Logic

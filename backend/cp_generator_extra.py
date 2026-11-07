@@ -1677,12 +1677,14 @@ EXTRA_CP_GENERATORS = {
 # =============================================================================
 
 CP_QUESTION_FORMATS: List[Dict[str, str]] = [
-    {"id": "all", "name": "All Formats (Mixed Practice)"},
-    {"id": "design_from_spec", "name": "Design Module from Spec"},
-    {"id": "bug_fix_rtl", "name": "Debug & Fix Buggy RTL (Bug Hunt)"},
-    {"id": "fill_in_blanks", "name": "Fill-in-the-Blanks (Rapid Speedrun)"},
-    {"id": "verification_monitor", "name": "Verification & Property Checking"},
-    {"id": "reverse_engineer_mystery", "name": "Reverse-Engineer Mystery Circuit"},
+    {"id": "all", "name": "All 7 Formats (Mixed Practice)"},
+    {"id": "design_from_spec", "name": "1. Design Module from Spec"},
+    {"id": "bug_fix_rtl", "name": "2. Debug & Fix Buggy RTL (Bug Hunt)"},
+    {"id": "fill_in_blanks", "name": "3. Fill-in-the-Blanks (Rapid Speedrun)"},
+    {"id": "verification_monitor", "name": "4. Verification & Property Checking"},
+    {"id": "reverse_engineer_mystery", "name": "5. Reverse-Engineer Mystery Circuit"},
+    {"id": "spiral_reinforcement", "name": "6. Spiral Track Reinforcement & Revision"},
+    {"id": "speed_coding_sprint", "name": "7. 90-Second Blitz Speed-Coding Sprint"},
 ]
 
 
@@ -1692,17 +1694,22 @@ def apply_question_format(
     rng: random.Random,
 ) -> Dict[str, Any]:
     """
-    Transform a generated CP problem into one of the 5 interactive question formats:
+    Transform a generated CP problem into one of the 7 interactive question formats:
       - `design_from_spec`
       - `bug_fix_rtl`
       - `fill_in_blanks`
       - `verification_monitor`
       - `reverse_engineer_mystery`
+      - `spiral_reinforcement`
+      - `speed_coding_sprint`
     """
     if prob["cp_category"].startswith("verif_"):
         fmt = "verification_monitor"
     elif question_format in ("all", "", None):
-        fmt = rng.choice(["design_from_spec", "design_from_spec", "bug_fix_rtl", "fill_in_blanks", "reverse_engineer_mystery"])
+        fmt = rng.choice([
+            "design_from_spec", "design_from_spec", "bug_fix_rtl",
+            "fill_in_blanks", "reverse_engineer_mystery", "spiral_reinforcement",
+        ])
     else:
         fmt = question_format
 
@@ -1748,7 +1755,7 @@ def apply_question_format(
         prob["hints"] = [f"Bug Hunt Clue: Look closely for: {bug_desc}"] + prob.get("hints", [])
         prob["time_limit_sec"] = max(120, int(prob.get("time_limit_sec", 240) * 0.75))
 
-    elif fmt == "fill_in_blanks":
+    elif fmt in ("fill_in_blanks", "speed_coding_sprint"):
         # Replace key expressions (`return ...;` or `<= ...;`) with `/* TODO_BLANK */ ?`
         lines = ref.splitlines()
         blanked_lines = []
@@ -1781,15 +1788,16 @@ def apply_question_format(
             f"{prob['snippet_template']}\n"
             f"endmodule"
         )
-        prob["title"] = re.sub(r"^CP #(\d+):", r"CP #\1 [Fill-in-Blanks]:", prob["title"])
-        prob["tags"] = ["Format: Fill-in-Blanks"] + prob.get("tags", [])
+        badge = "90s Speed Sprint" if fmt == "speed_coding_sprint" else "Fill-in-Blanks"
+        prob["title"] = re.sub(r"^CP #(\d+):", f"CP #\\1 [{badge}]:", prob["title"])
+        prob["tags"] = [f"Format: {badge}"] + prob.get("tags", [])
         prob["description"] = (
             "> [!TIP]\n"
-            "> **Rapid Fill-in-the-Blanks (`fill_in_blanks`)**: Most of the BSV module is already written for you in the editor! "
+            f"> **{badge} (`{fmt}`)**: Most of the BSV module is already written for you in the editor! "
             "Simply replace each `/* TODO_BLANK */ ?` placeholder to complete the circuit.\n\n"
             + prob["description"]
         )
-        prob["time_limit_sec"] = max(90, int(prob.get("time_limit_sec", 240) * 0.6))
+        prob["time_limit_sec"] = 90 if fmt == "speed_coding_sprint" else max(90, int(prob.get("time_limit_sec", 240) * 0.6))
 
     elif fmt == "reverse_engineer_mystery":
         prob["title"] = re.sub(r"^CP #(\d+):", r"CP #\1 [Mystery RTL]:", prob["title"])
@@ -1798,6 +1806,15 @@ def apply_question_format(
             "> [!IMPORTANT]\n"
             "> **Reverse-Engineering Challenge (`reverse_engineer_mystery`)**: Use the architectural diagram, interface signature, "
             "and specification below (plus the Bluesim Golden Waveform trace when you run **Compile & Verify**) to deduce and implement the exact hardware behavior!\n\n"
+            + prob["description"]
+        )
+    elif fmt == "spiral_reinforcement":
+        prob["title"] = re.sub(r"^CP #(\d+):", r"CP #\1 [Spiral Reinforce]:", prob["title"])
+        prob["tags"] = ["Format: Spiral Reinforce"] + prob.get("tags", [])
+        prob["description"] = (
+            "> [!NOTE]\n"
+            "> **Spiral Track Reinforcement (`spiral_reinforcement`)**: This problem reinforces your Mode 1 Guided Curriculum concepts "
+            "with fresh randomized parameters to build muscle memory and hardware intuition.\n\n"
             + prob["description"]
         )
     elif fmt == "verification_monitor":

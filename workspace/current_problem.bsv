@@ -1,5 +1,5 @@
 // ============================================================================
-// BSVbits Active Problem: 01. Constant Zero Output (Your First BSV Method) (01_wire_zero)
+// BSVbits Active Problem: 001. Constant Zero Output (Your First BSV Method) (01_wire_zero)
 // User: default (SQLite Shared State) | Mode: CURRICULUM (design_from_spec)
 // Difficulty: Easy | Editor Mode: SNIPPET
 // ----------------------------------------------------------------------------

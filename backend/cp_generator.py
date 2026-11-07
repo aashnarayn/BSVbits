@@ -34,18 +34,26 @@ from .cp_generator_extra import (
     EXTRA_CP_GENERATORS,
     apply_question_format,
 )
+from .cp_generator_bank import (
+    BANK_CP_CATEGORIES,
+    BANK_CP_GENERATORS,
+    TRACK_TO_CP_FAMILIES,
+)
 
 
 CP_CATEGORIES: List[Dict[str, str]] = [
-    {"id": "all", "name": "🌟 All 32 Hardware, Protocol, Verification & Arch Families"},
-    {"id": "priority_encoder", "name": "📦 Group: Priority Encoders, CLZ/CTZ & One-Hot Codecs"},
-    {"id": "counters", "name": "📦 Group: Counters, Ring/Johnson, Debouncers, PWM & Watchdogs"},
-    {"id": "regslices", "name": "📦 Group: RegSlices, Gearboxes, Credit FIFOs, Scramblers & Firewalls"},
-    {"id": "fsms", "name": "📦 Group: Sequence Detectors & Mealy Vending FSMs"},
-    {"id": "datapath", "name": "📦 Group: Barrel Shifters, Gray Code, Parity, Window Comp & DSP MAC"},
-    {"id": "protocols", "name": "📦 Group: AMBA APB3, AXI-Lite WSTRB, Round-Robin Arbiters & NoC Routers"},
-    {"id": "architecture", "name": "📦 Group: Branch Predictors (2-Bit BHT) & CPU Pipeline Forwarding"},
-    {"id": "verification", "name": "📦 Group: Verification Monitors & Formal Property Checkers"},
+    {"id": "all", "name": "🌟 All 80 Hardware, DSP, Memory, CDC, Verification & Arch Families"},
+    *BANK_CP_CATEGORIES[:10],
+    {"id": "priority_encoder", "name": "📦 Group: Priority Encoders, CLZ/CTZ, Popcount & One-Hot Codecs"},
+    {"id": "counters", "name": "📦 Group: Counters, Ring/Johnson, Ping-Pong, Dividers, PWM & Watchdogs"},
+    {"id": "regslices", "name": "📦 Group: RegSlices, Ehr Bypass, Gearboxes, Token Buckets & WFQ"},
+    {"id": "fsms", "name": "📦 Group: Sequence Detectors, Vending, UART, SPI, I2C, HDLC & AXI Bursts"},
+    {"id": "datapath", "name": "📦 Group: Shifters, Gray/BCD/ECC, CSA, CORDIC, FIR/IIR, Sorting & MAC"},
+    {"id": "memory", "name": "📦 Group: Dual-Port BRAM, CAM, TCAM, LIFO Stack, Free-List & Bloom Filter"},
+    {"id": "cdc", "name": "📦 Group: CDC SyncBit, Toggle Pulse, Reset Stretcher, Gray FIFO & 4-Phase MCP"},
+    {"id": "protocols", "name": "📦 Group: AMBA APB3, AXI-Lite WSTRB, Arbiters, Packet Firewall & NoC Routers"},
+    {"id": "architecture", "name": "📦 Group: Branch Predictors (BHT/Gshare), Forwarding & Superscalar Issue"},
+    {"id": "verification", "name": "📦 Group: Verification Monitors, SVA Liveness, Conservation & Coverage"},
     {"id": "prio_encoder", "name": "01. Priority Encoder (MSB/LSB, Active-High/Low)"},
     {"id": "clz_ctz_detector", "name": "02. Leading/Trailing Zero & One Detector (CLZ/CTZ/CLO)"},
     {"id": "onehot_therm_codec", "name": "03. One-Hot & Thermometer Codec"},
@@ -78,6 +86,7 @@ CP_CATEGORIES: List[Dict[str, str]] = [
     {"id": "verif_arbiter_checker", "name": "30. Verification: Arbiter Mutual-Exclusion & Work-Conserving Monitor"},
     {"id": "verif_axi_handshake", "name": "31. Verification: AXI-Stream Ready/Valid Payload Stability Monitor"},
     {"id": "verif_fifo_conservation", "name": "32. Verification: FIFO Occupancy & Overflow/Underflow Monitor"},
+    *BANK_CP_CATEGORIES[10:],
 ]
 
 
@@ -88,9 +97,8 @@ def generate_cp_problem(
     question_format: str = "all",
 ) -> Dict[str, Any]:
     """
-    Generate a fresh, parameterized competitive programming BSV problem across 32 families
-    and 5 interactive question formats (`design_from_spec`, `bug_fix_rtl`, `fill_in_blanks`,
-    `verification_monitor`, `reverse_engineer_mystery`).
+    Generate a fresh, parameterized competitive programming BSV problem across 80 families
+    and 7 interactive question formats.
     """
     if seed is None:
         seed = int(time.time() * 1000) % 1000000 + random.randint(1, 99999)
@@ -104,15 +112,21 @@ def generate_cp_problem(
         difficulty_norm = "Medium"
 
     cat_map = {
-        "priority_encoder": ["prio_encoder", "clz_ctz_detector", "onehot_therm_codec", "arbiter_perm"],
-        "counters": ["modulo_counter", "updown_sat_counter", "johnson_ring_counter", "debounce_glitch_filter", "pwm_timer", "watchdog_timer"],
-        "regslices": ["regslice_transform", "gearbox_serializer", "skid_credit_fifo", "lfsr_scrambler", "packet_firewall"],
-        "fsms": ["pattern_fsm", "vending_mealy_fsm"],
-        "datapath": ["gray_codec", "crc_parity_gen", "barrel_rotator", "saturating_alu", "window_comparator", "mac_engine"],
-        "arbiters": ["arbiter_perm", "round_robin_arbiter", "prio_encoder", "noc_xy_router"],
-        "protocols": ["apb_slave_periph", "axi_wstrb_merger", "round_robin_arbiter", "skid_credit_fifo", "noc_xy_router", "packet_firewall"],
-        "architecture": ["branch_predictor_bht", "pipeline_forwarding", "noc_xy_router", "mac_engine"],
-        "verification": ["verif_arbiter_checker", "verif_axi_handshake", "verif_fifo_conservation"],
+        "priority_encoder": ["prio_encoder", "clz_ctz_detector", "onehot_therm_codec", "arbiter_perm", "popcount_threshold", "bitmap_freelist_alloc"],
+        "counters": ["modulo_counter", "updown_sat_counter", "johnson_ring_counter", "debounce_glitch_filter", "pwm_timer", "watchdog_timer", "clk_divider_fractional", "ping_pong_wave_gen"],
+        "regslices": ["regslice_transform", "gearbox_serializer", "skid_credit_fifo", "lfsr_scrambler", "packet_firewall", "ehr_bypass_pipeline", "token_bucket_shaper", "wfq_weighted_scheduler", "gearbox_16to8_unpacker"],
+        "fsms": ["pattern_fsm", "vending_mealy_fsm", "uart_rx_oversampler", "spi_cpol_cpha_master", "i2c_addr_matcher_fsm", "hdlc_zero_stuffer_fsm", "axi_burst_chopper_fsm"],
+        "datapath": ["gray_codec", "crc_parity_gen", "barrel_rotator", "saturating_alu", "window_comparator", "mac_engine", "carry_save_compressor", "q4_4_fixed_point_mac", "cordic_stage_rotator", "fir_3tap_symmetric", "ewma_iir_filter", "sorting_network_4elem"],
+        "memory": ["bram_write_first_bypass", "cam_4entry_lookup", "tcam_wildcard_matcher", "lifo_hardware_stack", "bitmap_freelist_alloc", "bloom_filter_2hash"],
+        "cdc": ["cdc_syncbit_chain", "cdc_toggle_pulse_sync", "cdc_reset_stretcher", "cdc_async_fifo_gray_occ", "cdc_mcp_req_ack_fsm"],
+        "arbiters": ["arbiter_perm", "round_robin_arbiter", "prio_encoder", "noc_xy_router", "wfq_weighted_scheduler"],
+        "protocols": ["apb_slave_periph", "axi_wstrb_merger", "round_robin_arbiter", "skid_credit_fifo", "noc_xy_router", "packet_firewall", "noc_3d_xyz_router", "axi_burst_chopper_fsm"],
+        "architecture": ["branch_predictor_bht", "pipeline_forwarding", "noc_xy_router", "mac_engine", "noc_3d_xyz_router", "gshare_branch_predictor", "superscalar_dual_issue"],
+        "verification": [
+            "verif_arbiter_checker", "verif_axi_handshake", "verif_fifo_conservation",
+            "verif_bounded_liveness", "verif_credit_conservation", "verif_gray_transition", "verif_coverage_bin_tracker",
+        ],
+        **TRACK_TO_CP_FAMILIES,
     }
 
     dispatch = {
@@ -127,10 +141,11 @@ def generate_cp_problem(
         "arbiter_perm": _gen_arbiter_perm,
         "mac_engine": _gen_mac_engine,
         **EXTRA_CP_GENERATORS,
+        **BANK_CP_GENERATORS,
     }
 
     if question_format == "verification_monitor" and category == "all":
-        templates = ["verif_arbiter_checker", "verif_axi_handshake", "verif_fifo_conservation"]
+        templates = cat_map["verification"]
     elif category in cat_map:
         templates = cat_map[category]
     elif category in dispatch:
@@ -140,13 +155,16 @@ def generate_cp_problem(
             templates = [
                 "prio_encoder", "gray_codec", "saturating_alu", "modulo_counter",
                 "clz_ctz_detector", "onehot_therm_codec", "window_comparator",
-                "johnson_ring_counter", "verif_arbiter_checker",
+                "johnson_ring_counter", "verif_arbiter_checker", "bit_reversal_permute",
+                "bcd_excess3_codec", "popcount_threshold", "prefix_scan_network",
             ]
         elif difficulty_norm == "Hard":
             templates = [
                 "pattern_fsm", "regslice_transform", "arbiter_perm", "mac_engine",
                 "barrel_rotator", "gearbox_serializer", "apb_slave_periph",
                 "branch_predictor_bht", "pipeline_forwarding", "verif_axi_handshake",
+                "sorting_network_4elem", "lifo_hardware_stack", "bloom_filter_2hash",
+                "cdc_mcp_req_ack_fsm", "gshare_branch_predictor", "superscalar_dual_issue",
             ]
         else:
             templates = list(dispatch.keys())
@@ -445,7 +463,6 @@ def _gen_regslice_transform(rng: random.Random, seed: int, difficulty: str) -> D
     swap_nibbles = rng.choice([True, False])
 
     if swap_nibbles:
-        transform_expr = f"(( {x_var := 'x'}[3:0], {x_var}[7:4] ) ^ 8'h{xor_mask:02X})"
         transform_code = f"{{x[3:0], x[7:4]}} ^ 8'h{xor_mask:02X}"
         desc_op = f"swap the upper and lower 4-bit nibbles (`{{x[3:0], x[7:4]}}`) and XOR with `8'h{xor_mask:02X}`"
     else:

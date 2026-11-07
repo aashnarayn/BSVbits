@@ -213,7 +213,7 @@ def main() -> int:
     p_serve.add_argument("--port", type=int, default=8000)
     p_serve.add_argument("--host", type=str, default="0.0.0.0")
 
-    sub.add_parser("list", help="List all 79 curriculum problems across 8 tracks")
+    sub.add_parser("list", help="List all 342 curriculum problems across 10 tracks")
 
     p_start = sub.add_parser("start", help="Stage a curriculum problem into workspace/current_problem.bsv")
     p_start.add_argument("problem_id", type=str)
@@ -221,21 +221,26 @@ def main() -> int:
 
     sub.add_parser("next", help="Stage the next curriculum problem")
 
-    p_gen = sub.add_parser("generate", help="Generate a new Competitive Arena problem")
+    p_gen = sub.add_parser("generate", help="Generate a new Competitive Arena problem (80 families)")
     p_gen.add_argument("--difficulty", choices=["Easy", "Medium", "Hard", "Mixed"], default="Medium")
     p_gen.add_argument("--category", type=str, default="all")
-    p_gen.add_argument("--format", type=str, default="all", help="design_from_spec | bug_fix_rtl | fill_in_blanks | verification_monitor | reverse_engineer_mystery")
+    p_gen.add_argument("--format", type=str, default="all", help="design_from_spec | bug_fix_rtl | fill_in_blanks | verification_monitor | reverse_engineer_mystery | spiral_reinforcement | speed_coding_sprint")
     p_gen.add_argument("--seed", type=int, default=None)
 
     p_daily = sub.add_parser("daily", help="Stage today's Daily Hardware Challenge (LeetCode Daily style)")
     p_daily.add_argument("--date", type=str, default=None)
 
     p_sess = sub.add_parser("session", help="Start a packaged multi-problem CP Practice Session")
-    p_sess.add_argument("--time", type=int, default=20, help="Available time budget in minutes (e.g. 10, 20, 30, 60)")
+    p_sess.add_argument("--time", type=int, default=20, help="Available time budget in minutes (e.g. 10, 15, 20, 30, 60)")
     p_sess.add_argument("--difficulty", choices=["Easy", "Medium", "Hard", "Mixed"], default="Medium")
     p_sess.add_argument("--count", type=int, default=0, help="Number of problems (0 = auto-calculate from time & difficulty)")
     p_sess.add_argument("--category", type=str, default="all")
     p_sess.add_argument("--format", type=str, default="all")
+
+    p_reinf = sub.add_parser("reinforce", help="Start a Track-Targeted CP Reinforcement Session for any Mode 1 Track (1..10 or track_id)")
+    p_reinf.add_argument("track", type=str, help="Track number (1..10) or track_id (e.g. track1_combinational)")
+    p_reinf.add_argument("--time", type=int, default=15, help="Time budget in minutes")
+    p_reinf.add_argument("--count", type=int, default=3, help="Number of reinforcement problems")
 
     p_user = sub.add_parser("user", help="Switch active user profile (shared between VS Code and Web UI via SQLite)")
     p_user.add_argument("username", type=str)
@@ -246,7 +251,7 @@ def main() -> int:
     p_hint.add_argument("--level", type=int, default=1)
 
     sub.add_parser("solution", help="Show Golden Reference BSV solution")
-    sub.add_parser("verify-all", help="Run full bsc test suite on all 79 curriculum and 32 CP generator families")
+    sub.add_parser("verify-all", help="Run full bsc test suite on all 342 curriculum and 80 CP generator families")
 
     args = parser.parse_args()
     state = BSVBitsState()
@@ -263,6 +268,13 @@ def main() -> int:
         return cmd_daily(state, args.date)
     elif args.cmd == "session":
         return cmd_session(state, args.time, args.difficulty, args.count, args.category, args.format)
+    elif args.cmd == "reinforce":
+        t_arg = args.track.strip()
+        if t_arg.isdigit() and 1 <= int(t_arg) <= len(CURRICULUM_TRACKS):
+            t_id = CURRICULUM_TRACKS[int(t_arg) - 1]["id"]
+        else:
+            t_id = t_arg
+        return cmd_session(state, args.time, "Mixed", args.count, t_id, "spiral_reinforcement")
     elif args.cmd == "user":
         return cmd_user(state, args.username)
     elif args.cmd == "submit":

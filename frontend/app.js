@@ -15,10 +15,12 @@ const appState = {
   editorMode: 'snippet',      // 'snippet' | 'full'
   curriculumTracks: [],
   curriculumSearchQuery: '',
+  curriculumStatusFilter: 'all', // 'all' | 'unsolved' | 'solved' | 'combo'
+  collapsedTracks: {},
   cpCategories: [],
   cpQuestionFormats: [],
   solvedCurriculum: [],
-  totalCurriculum: 79,
+  totalCurriculum: 342,
   cpRating: 1200,
   cpStreak: 0,
   dailyStreak: 0,
@@ -35,6 +37,7 @@ const appState = {
   cpDifficultyFilter: 'Medium',
   cpCategoryFilter: 'all',
   cpFormatFilter: 'all',
+  cpTimeBudget: 20,
   cpTimeBudgetMin: 20,
   cpSessionCount: 0, // 0 = Auto-fit to time
   llmConfig: {
@@ -258,6 +261,33 @@ function filterCurriculumSidebar(query) {
   renderSidebar();
 }
 
+function setCurriculumStatusFilter(filterMode) {
+  appState.curriculumStatusFilter = filterMode || 'all';
+  ['all', 'unsolved', 'solved', 'combo'].forEach((k) => {
+    const el = document.getElementById(`cfilt-${k}`);
+    if (el) el.classList.toggle('active', k === appState.curriculumStatusFilter);
+  });
+  renderSidebar();
+}
+
+function toggleTrackCollapse(trackId) {
+  appState.collapsedTracks[trackId] = !appState.collapsedTracks[trackId];
+  renderSidebar();
+}
+
+async function reinforceTrackInCp(trackId, evt) {
+  if (evt) evt.stopPropagation();
+  appState.platformMode = 'cp';
+  appState.cpCategoryFilter = trackId;
+  appState.cpFormatFilter = 'spiral_reinforcement';
+  appState.cpDifficultyFilter = 'Mixed';
+  appState.cpTimeBudget = 15;
+  appState.cpTimeBudgetMin = 15;
+  appState.cpSessionCount = 3;
+  updateHeaderIndicators();
+  await startCpSession();
+}
+
 function renderSidebar() {
   const container = document.getElementById('sidebar-content');
   const header = document.getElementById('sidebar-curriculum-header');
@@ -267,10 +297,26 @@ function renderSidebar() {
     const solvedSet = new Set(appState.solvedCurriculum);
     const activeId = appState.activeProblem ? appState.activeProblem.id : '';
     const q = appState.curriculumSearchQuery || '';
+    const stFilter = appState.curriculumStatusFilter || 'all';
 
     let html = '';
     for (const track of appState.curriculumTracks) {
       const filteredProbs = track.problems.filter((p) => {
+        const isSolved = solvedSet.has(p.id);
+        if (stFilter === 'unsolved' && isSolved) return false;
+        if (stFilter === 'solved' && !isSolved) return false;
+        if (stFilter === 'combo') {
+          const tLower = p.title.toLowerCase();
+          const tagsLower = (p.tags || []).map((t) => t.toLowerCase());
+          const isComboOrReinforce =
+            tLower.includes('combo') ||
+            tLower.includes('reinforce') ||
+            tLower.includes('revision') ||
+            tLower.includes('capstone') ||
+            tLower.includes('bug hunt') ||
+            tagsLower.some((t) => t.includes('combo') || t.includes('reinforce') || t.includes('revision') || t.includes('bug hunt'));
+          if (!isComboOrReinforce) return false;
+        }
         if (!q) return true;
         return (
           p.title.toLowerCase().includes(q) ||
@@ -281,27 +327,33 @@ function renderSidebar() {
       if (filteredProbs.length === 0) continue;
 
       const trackSolved = track.problems.filter((p) => solvedSet.has(p.id)).length;
+      const isCollapsed = Boolean(appState.collapsedTracks[track.id]) && !q && stFilter === 'all';
       html += `<div class="track-group">`;
-      html += `<div class="track-header" title="${escapeHtml(track.subtitle)}" style="display:flex;justify-content:space-between;align-items:center;">
-        <span>${escapeHtml(track.title)}</span>
-        <span style="font-size:10px;color:var(--text-muted);">${trackSolved}/${track.problems.length}</span>
+      html += `<div class="track-header" title="${escapeHtml(track.subtitle)}" onclick="toggleTrackCollapse('${track.id}')" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:4px;">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isCollapsed ? '▸' : '▾'} ${escapeHtml(track.title)}</span>
+        <span style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <button class="btn" onclick="reinforceTrackInCp('${track.id}', event)" title="Practice &amp; reinforce this track in the Competitive Arena" style="padding:1px 5px;font-size:9.5px;color:var(--accent-cyan);border-color:rgba(56,189,248,0.35);">🎯 CP Drill</button>
+          <span style="font-size:10px;color:var(--text-muted);">${trackSolved}/${track.problems.length}</span>
+        </span>
       </div>`;
-      for (const p of filteredProbs) {
-        const isSolved = solvedSet.has(p.id);
-        const isActive = p.id === activeId;
-        html += `
-          <button class="problem-item ${isActive ? 'active' : ''}" id="nav-prob-${p.id}" onclick="selectCurriculumProblem('${p.id}')">
-            <span class="prob-left">
-              <span class="status-icon ${isSolved ? 'solved' : ''}">${isSolved ? '✓' : p.number}</span>
-              <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title.replace(/^\d+\.\s*/, ''))}</span>
-            </span>
-            <span class="diff-badge diff-${p.difficulty}">${p.difficulty}</span>
-          </button>
-        `;
+      if (!isCollapsed) {
+        for (const p of filteredProbs) {
+          const isSolved = solvedSet.has(p.id);
+          const isActive = p.id === activeId;
+          html += `
+            <button class="problem-item ${isActive ? 'active' : ''}" id="nav-prob-${p.id}" onclick="selectCurriculumProblem('${p.id}')">
+              <span class="prob-left">
+                <span class="status-icon ${isSolved ? 'solved' : ''}">${isSolved ? '✓' : p.number}</span>
+                <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title.replace(/^\d+\.\s*/, ''))}</span>
+              </span>
+              <span class="diff-badge diff-${p.difficulty}">${p.difficulty}</span>
+            </button>
+          `;
+        }
       }
       html += `</div>`;
     }
-    container.innerHTML = html || `<div style="padding:12px;color:var(--text-muted);font-size:12px;">No curriculum problems match "${escapeHtml(q)}".</div>`;
+    container.innerHTML = html || `<div style="padding:12px;color:var(--text-muted);font-size:12px;">No curriculum problems match your current filter.</div>`;
   } else {
     header.style.display = 'none';
     const catOptions = appState.cpCategories
@@ -311,12 +363,14 @@ function renderSidebar() {
     const fmtOptions = (appState.cpQuestionFormats.length
       ? appState.cpQuestionFormats
       : [
-          { id: 'all', name: 'All 5 Question Formats (Mixed)' },
+          { id: 'all', name: 'All 7 Question Formats (Mixed)' },
           { id: 'design_from_spec', name: '1. RTL Module Design from Spec' },
           { id: 'bug_fix_rtl', name: '2. Hardware Bug Hunt & RTL Repair' },
           { id: 'fill_in_blanks', name: '3. Fill-in-the-Blanks Microarchitecture' },
           { id: 'verification_monitor', name: '4. Verification & Spec Compliance' },
           { id: 'reverse_engineer_mystery', name: '5. Reverse-Engineer Mystery Spec' },
+          { id: 'spiral_reinforcement', name: '6. Spiral Track Reinforcement & Revision' },
+          { id: 'speed_coding_sprint', name: '7. 90-Second Blitz Speed-Coding Sprint' },
         ]
     )
       .map((f) => `<option value="${f.id}" ${f.id === appState.cpFormatFilter ? 'selected' : ''}>${escapeHtml(f.name)}</option>`)
@@ -362,7 +416,7 @@ function renderSidebar() {
           <span class="tag-chip" style="color:var(--accent-amber);">${appState.dailyStreak || 0}d Daily Streak</span>
         </div>
         <div style="font-size:11.5px;color:var(--text-secondary);margin-bottom:8px;">
-          Deterministic daily hardware, protocol, or architecture challenge shared across all users today.
+          Deterministic daily hardware, DSP, memory, CDC, verification, or architecture challenge shared across all users today.
         </div>
         <button class="btn btn-amber" onclick="startDailyChallenge()" style="width:100%;justify-content:center;padding:6px 10px;">
           🌟 Launch Today's Daily Challenge
@@ -376,14 +430,15 @@ function renderSidebar() {
           ⚡ Practice Pack &amp; Problem Synthesizer
         </div>
         <div style="font-size:11.5px;color:var(--text-secondary);">
-          32 hardware, protocol, CDC, verification &amp; computer architecture families across 5 question styles.
+          80 procedural hardware, DSP, memory, CDC, verification &amp; computer architecture families across 7 question styles (including Track Reinforcement!).
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
           <div>
             <label class="form-label" for="cp-time-select">Time Budget</label>
-            <select class="form-select" id="cp-time-select" onchange="appState.cpTimeBudget = parseInt(this.value, 10)">
+            <select class="form-select" id="cp-time-select" onchange="appState.cpTimeBudget = parseInt(this.value, 10); appState.cpTimeBudgetMin = appState.cpTimeBudget;">
               <option value="10" ${appState.cpTimeBudget === 10 ? 'selected' : ''}>10 mins (Sprint)</option>
+              <option value="15" ${appState.cpTimeBudget === 15 ? 'selected' : ''}>15 mins (Reinforce)</option>
               <option value="20" ${appState.cpTimeBudget === 20 ? 'selected' : ''}>20 mins (Standard)</option>
               <option value="30" ${appState.cpTimeBudget === 30 ? 'selected' : ''}>30 mins (Deep)</option>
               <option value="45" ${appState.cpTimeBudget === 45 ? 'selected' : ''}>45 mins (Contest)</option>
@@ -413,14 +468,14 @@ function renderSidebar() {
         </div>
 
         <div>
-          <label class="form-label" for="cp-fmt-select">Question Format</label>
+          <label class="form-label" for="cp-fmt-select">Question Format (7 Styles)</label>
           <select class="form-select" id="cp-fmt-select" onchange="appState.cpFormatFilter = this.value">
             ${fmtOptions}
           </select>
         </div>
 
         <div>
-          <label class="form-label" for="cp-cat-select">Hardware / Architecture Family (32 Families)</label>
+          <label class="form-label" for="cp-cat-select">Track Reinforce / Hardware Family (80 Families)</label>
           <select class="form-select" id="cp-cat-select" onchange="appState.cpCategoryFilter = this.value">
             ${catOptions}
           </select>
@@ -428,7 +483,7 @@ function renderSidebar() {
 
         <div style="display:flex;gap:6px;flex-direction:column;">
           <button class="btn btn-primary" id="btn-start-cp-session" onclick="startCpSession()" style="width:100%;justify-content:center;padding:7px;">
-            🎯 Start Timed Practice Pack Session
+            🎯 Start Timed Practice / Track Reinforce Session
           </button>
           <button class="btn btn-cyan" id="btn-generate-cp-now" onclick="generateNewCpChallenge()" style="width:100%;justify-content:center;padding:7px;">
             ⚡ Generate Single CP Problem

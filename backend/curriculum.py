@@ -115,42 +115,52 @@ CURRICULUM_TRACKS: List[Dict[str, str]] = [
     {
         "id": "track1_combinational",
         "title": "1. BSV Basics & Combinational Logic",
-        "subtitle": "Wires, Constants, Universal Gates, Adders, Decoders, LUTs, Parity, Comparators, BCD, CLZ & Combination Labs",
+        "subtitle": "Wires, Universal Gates, Muxes, Adders, CLA, Encoders, Decoders, Gray/BCD, CLZ/CTZ, Shifters & Combination Labs",
     },
     {
         "id": "track2_types",
         "title": "2. Strong Types, Enums, Structs & Vectors",
-        "subtitle": "Enums, Tagged Unions, Structs, Maybe#(t), Vector SIMD Lanes, NZCV Flag ALUs & 2x2 Crossbar Switches",
+        "subtitle": "Enums, Tagged Unions, Structs, Maybe#(t), Tuples, Vector Map/Fold/Scan, Hamming ECC, Crossbars & Packet Classifiers",
     },
     {
         "id": "track3_sequential",
-        "title": "3. Sequential Circuits, Registers & Rules",
-        "subtitle": "mkReg, DReg Pulses, Decade BCD Counters, Universal Shift Registers, LFSRs, Debouncers, Stopwatches & GCD",
+        "title": "3. Sequential Circuits, Registers & Atomic Rules",
+        "subtitle": "mkReg, DReg, Counters, Johnson/Gray Counters, LFSRs, CRC-8, Debouncers, Watchdogs, PWM, Dividers & GCD",
     },
     {
         "id": "track4_concurrency",
         "title": "4. Concurrency, Scheduling, CReg/Ehr & Advanced FIFOs",
-        "subtitle": "RWire, PulseWire, descending_urgency, 3-Port CReg/Ehr, Bypass RegFile, SpecialFIFOs, GetPut/Connectable & Gearboxes",
+        "subtitle": "RWire, PulseWire, descending_urgency, Multi-Port CReg/Ehr, Bypass/Pipeline FIFOF, GetPut/Connectable & Gearboxes",
     },
     {
         "id": "track5_fsms",
-        "title": "5. Finite State Machines & StmtFSM",
-        "subtitle": "Sequence Detectors, Vending Machine FSM, Traffic Controllers, UART 8N1, SPI Master & Microcoded StmtFSM",
+        "title": "5. Finite State Machines, Serial Protocols & StmtFSM",
+        "subtitle": "Moore/Mealy Detectors, Traffic/Elevator/Vending FSMs, UART 8N1, SPI, I2C, Manchester, HDLC, AXI DMA & StmtFSM",
+    },
+    {
+        "id": "track6_dsp_arithmetic",
+        "title": "6. Digital Arithmetic, VLSI Datapaths & DSP Engines",
+        "subtitle": "Saturating Math, Q4.4 Fixed-Point, Booth/Wallace Multipliers, Non-Restoring Divider, CORDIC, FIR/IIR/Median Filters & Sorting Networks",
+    },
+    {
+        "id": "track7_memory",
+        "title": "7. Memory Subsystems, RegFiles, BRAMs, CAMs & Buffers",
+        "subtitle": "RegFile, Dual-Port BRAM, Write-First Bypass, Banked Interleaving, CAM, TCAM, Circular FIFOs, LIFO Stack, Free List & ROB",
     },
     {
         "id": "track7_cdc",
-        "title": "6. Clock Domain Crossing (CDC) & Synchronizers",
-        "subtitle": "Clocks Package Principles: 2-FF SyncBit, Toggle Pulse Synchronizer, Reset Stretcher, Gray Async FIFO & MCP Handshake",
+        "title": "8. Clock Domain Crossing (CDC), Resets & Multi-Clock",
+        "subtitle": "Clocks Package: 2-FF/3-FF SyncBit, Toggle Pulse Sync, Reset Stretcher, Glitch-Free Clock Mux, Gray Async FIFO & 4-Phase MCP Handshake",
     },
     {
         "id": "track9_verification",
-        "title": "7. Verification, Testbenches & Property Checkers",
-        "subtitle": "Synthesizable Scoreboards, FIFO Invariant Checkers, Arbiter Mutex Assertions, AXI Stability Monitors, Coverage & Bug Hunts",
+        "title": "9. Hardware Verification, Scoreboards, SVA Monitors & Bug Hunts",
+        "subtitle": "Reference Scoreboards, FIFO/Arbiter/AXI/Credit Invariant Checkers, Functional Coverage Bins & 10 Progressive RTL Bug-Hunt Labs",
     },
     {
         "id": "track6_architecture",
-        "title": "8. RTL Protocols & Computer Architecture",
-        "subtitle": "Round-Robin Arbiter, Credit Flow, APB3, AXI4-Lite, NoC XY Router, 2-Way LRU Cache, 2-Bit BHT, Forwarding, Scoreboard & RISC-V",
+        "title": "10. Interconnect Protocols, Caches & Computer Architecture",
+        "subtitle": "Round-Robin/Matrix Arbiters, Credit Flow, APB3, AXI4-Lite, Wishbone, NoC XY/XYZ Routers, L1/Victim Caches, BHT/Gshare/RAS, Scoreboard, Tomasulo & RISC-V",
     },
 ]
 
@@ -3199,7 +3209,16 @@ endinterface
 
     import re as _re
     from backend.curriculum_extra import build_extra_problems
+    from backend.curriculum_bank_t1_t3 import build_tracks_1_to_3_problems
+    from backend.curriculum_bank_t4_t6 import build_tracks_4_to_6_problems
+    from backend.curriculum_bank_t7_t10 import build_tracks_7_to_10_problems
+    from backend.curriculum_bank_spiral import build_spiral_reinforcement_problems
+
     problems.extend(build_extra_problems(_make_problem))
+    problems.extend(build_tracks_1_to_3_problems(_make_problem))
+    problems.extend(build_tracks_4_to_6_problems(_make_problem))
+    problems.extend(build_tracks_7_to_10_problems(_make_problem))
+    problems.extend(build_spiral_reinforcement_problems(_make_problem))
 
     track_order = {t["id"]: idx for idx, t in enumerate(CURRICULUM_TRACKS)}
     track_titles = {t["id"]: t["title"] for t in CURRICULUM_TRACKS}
@@ -3210,7 +3229,7 @@ endinterface
         p["number"] = idx
         p["track_title"] = track_titles.get(p["track_id"], p["track_title"])
         clean_title = _re.sub(r"^\d+\.\s*", "", p["title"])
-        p["title"] = f"{idx:02d}. {clean_title}"
+        p["title"] = f"{idx:03d}. {clean_title}"
 
     return problems
 

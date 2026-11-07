@@ -24,6 +24,7 @@ from backend.cp_generator import (
     _gen_mac_engine,
 )
 from backend.cp_generator_extra import EXTRA_CP_GENERATORS
+from backend.cp_generator_bank import BANK_CP_GENERATORS
 from backend.evaluator import evaluate_submission
 import random
 
@@ -40,7 +41,7 @@ def main() -> int:
             res = evaluate_submission(p, p["reference_snippet"], mode="snippet")
             status = "PASS" if (res.compiled and res.passed) else "FAIL"
             print(
-                f"[{status}] #{p['number']:02d} {p['id']:30s} | "
+                f"[{status}] #{p['number']:03d} {p['id']:32s} | "
                 f"tests={res.passed_tests}/{res.total_tests} | "
                 f"regs={res.metrics.reg_count} rules={res.metrics.rule_count} | "
                 f"{res.execution_time_ms}ms"
@@ -61,6 +62,7 @@ def main() -> int:
             ("arbiter_perm", _gen_arbiter_perm),
             ("mac_engine", _gen_mac_engine),
             *list(EXTRA_CP_GENERATORS.items()),
+            *list(BANK_CP_GENERATORS.items()),
         ]
         print(f"\n=== Verifying All {len(cp_gens)} Dynamic CP Generator Families with bsc ===")
         for name, fn in cp_gens:

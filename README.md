@@ -1,19 +1,23 @@
 # BSVbits — Bluespec SystemVerilog Learning & Competitive Hardware Studio
 
-**BSVbits** is a comprehensive learn-by-programming platform and competitive hardware design arena for **Bluespec SystemVerilog (BSV)**, Digital Electronics, VLSI Principles, Interconnect Protocols, Hardware Verification, and Computer Architecture — powered by the open-source **Bluespec Compiler (`bsc`)** and **Bluesim** cycle-accurate co-simulator.
+**BSVbits** is an ultra-comprehensive learn-by-programming platform and competitive hardware design arena for **Bluespec SystemVerilog (BSV)**, Digital Electronics, VLSI Datapaths, DSP Arithmetic, Memory Subsystems, Clock Domain Crossing (CDC), Hardware Verification/Testbenches, Interconnect Protocols, and Computer Architecture — powered by the open-source **Bluespec Compiler (`bsc`)** and **Bluesim** cycle-accurate co-simulator.
 
-Inspired by **HDLBits (01xz.net)**, **BSV by Example** (R. S. Nikhil & K. R. Czeck), **MIT 6.004 / 6.175 / 6.375 Constructive Computer Architecture**, **Bluespec Reference & User Guides**, and **NPTEL / GeeksforGeeks Digital Design**, BSVbits provides two integrated workflows backed by a free, zero-config **SQLite3 Relational DBMS (`workspace/bsvbits.db`)** that synchronizes user state between the **VS Code IDE** and the **Web Studio** in real time:
+Inspired by **HDLBits (01xz.net)**, **BSV by Example** (R. S. Nikhil & K. R. Czeck), **MIT 6.004 / 6.175 / 6.375 Constructive Computer Architecture**, **Bluespec Reference & User Guides**, and **NPTEL / GeeksforGeeks Digital Design**, BSVbits provides two tightly coupled workflows backed by a free, zero-config **SQLite3 Relational DBMS (`workspace/bsvbits.db`)** that synchronizes user state between the **VS Code IDE** and the **Web Studio** in real time:
 
-1. **Mode 1 — Guided Progression (HDLBits Mode — 79 Stored Problems across 8 Tracks)**:
-   - A structured **79-problem curriculum across 8 progressive tracks** taking a complete beginner from a 1-bit wire all the way through combinational logic & **Combination Synthesis Labs**, strong types (`typedef enum`, `typedef struct`, `Maybe#(t)`, `Tuple2`, `Vector`, higher-order `map`/`fold`), sequential circuits (`mkReg`, `mkRegU`, counters, timers, PWM, LFSRs, edge detectors), concurrency & scheduling (`PulseWire`, `RWire`, `DReg`, `Ehr#(n, t)` / `CReg` concurrent registers, `FIFOF`, `mkBypassFIFOF`, `GetPut` & `Connectable`, 8-to-16 Gearboxes), FSMs (`StmtFSM`, Mealy/Moore detectors, I2C, UART), **Clock Domain Crossing (`Clocks` package principles: 2-FF `SyncBit`, toggle `SyncPulse`, Reset Stretchers, Gray Async FIFO pointers, MCP handshakes)**, **Hardware Verification, Testbenches & Property Checkers** (scoreboards, FIFO invariant monitors, arbiter mutex monitors, AXI ready/valid stability monitors, LFSR functional coverage, and RTL bug-hunting labs), and **RTL Protocols & Computer Architecture** (`AMBA APB3`, `AXI4-Lite`, `SPI Mode-0`, `2D Mesh NoC XY Router`, `2-Way Set-Associative LRU Cache`, `2-Bit Saturating BHT Branch Predictor`, `5-Stage Pipeline Hazard Forwarding Unit`, `Scoreboard`, `Shift-and-Add Multiplier`, `RISC-V Immediate Generator`, and a **Mini RISC-V RV32I Processor Core**).
-2. **Mode 2 — Competitive Hardware Programming Arena (32 Families × 5 Question Formats + Daily & Timed Practice Packs)**:
-   - A LeetCode/Codeforces-style **procedural hardware problem generator** (`backend/cp_generator.py` & `backend/cp_generator_extra.py`) covering **32 hardware, protocol, verification, and computer architecture families** across **5 distinct question formats**:
+1. **Mode 1 — Guided Progression (HDLBits Mode — 342 Stored Problems across 10 Comprehensive Tracks)**:
+   - A finely graduated **342-problem curriculum across 10 progressive tracks** taking a complete beginner from a 1-bit wire all the way through combinational logic, strong types (`typedef enum`, `typedef struct`, `tagged union`, `Maybe#(t)`, `Tuple2`, `Vector` SIMD lanes, Hamming ECC, crossbars), sequential circuits (`mkReg`, `mkDReg`, counters, LFSRs, CRC-8, fractional dividers, debouncers, PWM, watchdogs, GCD), concurrency & scheduling (`PulseWire`, `RWire`, `descending_urgency`, `Ehr#(n, t)` / `CReg` multi-port registers, `FIFOF`, `mkBypassFIFOF`, `GetPut`/`Connectable`, gearboxes, token buckets, WFQ schedulers), FSMs & serial protocols (`StmtFSM`, Moore/Mealy detectors, traffic/elevator/vending FSMs, UART 8N1 TX/RX, SPI, I2C, Manchester, HDLC, AXI DMA burst engines), **Digital Arithmetic, VLSI Datapaths & DSP Engines** (saturating math, Q4.4 fixed-point, Booth/Wallace/CSA multipliers, non-restoring dividers, CORDIC, FIR/IIR/median filters, sorting networks), **Memory Subsystems, RegFiles, BRAMs, CAMs & Buffers** (1R1W/2R1W RegFiles, Read-First/Write-First BRAMs, banked interleaving, CAM, TCAM, circular FIFOs, LIFO stacks, free-list allocators, Bloom filters, Reorder Buffers), **Clock Domain Crossing (`Clocks` package: 2-FF/3-FF `SyncBit`, toggle `SyncPulse`, Reset Stretchers, glitch-free clock mux, Gray Async FIFO pointers & watermarks, 4-phase MCP handshakes)**, **Hardware Verification, Scoreboards, SVA Monitors & Bug Hunts** (reference scoreboards, FIFO/Arbiter/AXI/Credit invariant monitors, coverage trackers, and **10 progressive RTL Bug-Hunt repair labs**), and **Interconnect Protocols, Caches & Computer Architecture** (`AMBA APB3`, `AXI4-Lite`, `Wishbone`, `2D/3D Mesh NoC XY/XYZ Routers`, `Direct-Mapped / 2-Way LRU / Victim Caches`, `2-Bit BHT / Gshare / Tournament Predictors`, `Return Address Stack`, `5-Stage Hazard Forwarding`, `Scoreboard`, `Tomasulo Reservation Station`, `2-Way Superscalar Dual-Issue`, and a **Mini RISC-V RV32I Processor Core**).
+   - Built-in **Spiral Reinforcement (`[Reinforce]`)**, **Cross-Track Revision (`[Revision]`)**, and **Multi-Topic Combination Labs (`[Combo Lab]`)** at the end of every sub-topic so concepts are continuously clubbed together and reinforced.
+
+2. **Mode 2 — Competitive Hardware Programming Arena (80 Procedural Families × 7 Question Formats + Track-Targeted Reinforcement Sessions)**:
+   - A LeetCode/Codeforces-style **procedural hardware problem synthesizer** (`backend/cp_generator.py`, `backend/cp_generator_extra.py`, `backend/cp_generator_bank.py`) covering **80 parameterized hardware, DSP, memory, CDC, verification, and computer architecture families** across **7 interactive question formats**:
      1. **RTL Module Design from Specification** (`design_from_spec`)
-     2. **Hardware Bug Hunt & RTL Repair** (`bug_fix_rtl` — diagnose and fix a subtle off-by-one, polarity, or bit-width bug in an existing BSV module)
-     3. **Fill-in-the-Blanks Microarchitecture** (`fill_in_blanks` — complete missing expressions `/* TODO_EXPR */` in a partially written module)
-     4. **Verification & Specification Compliance** (`verification_monitor` — verify cycle-by-cycle invariants against a strict hardware property testbench)
-     5. **Reverse-Engineer Mystery Specification** (`reverse_engineer_mystery` — deduce the hardware function from an I/O truth/cycle trace table and implement it)
-   - Supports **Daily Hardware Challenges** (deterministic daily seed with streak tracking) and **Timed Practice Pack Sessions** (customizable by **Time Budget** `10m–60m`, **Problem Count** or auto-fit to time, **Difficulty** `Easy / Medium / Hard / Mixed`, **Question Format**, and **Hardware Family**).
+     2. **Hardware Bug Hunt & RTL Repair** (`bug_fix_rtl` — diagnose and fix an injected RTL bug in an existing BSV module)
+     3. **Fill-in-the-Blanks Microarchitecture** (`fill_in_blanks` — complete missing expressions `/* TODO_BLANK */` in a partially written module)
+     4. **Verification & Property Checking** (`verification_monitor` — write a cycle-accurate hardware assertion/invariant monitor)
+     5. **Reverse-Engineer Mystery Circuit** (`reverse_engineer_mystery` — deduce and implement the hardware function from its I/O trace & diagram)
+     6. **Spiral Track Reinforcement & Revision** (`spiral_reinforcement` — reinforce any Mode 1 curriculum track with fresh randomized parameters)
+     7. **90-Second Blitz Speed-Coding Sprint** (`speed_coding_sprint` — rapid-fire completion under a 90s timer)
+   - **Seamless Mode 1 ↔ Mode 2 Track Reinforcement**: Click **`🎯 CP Drill`** on any Mode 1 Track header in the Web Studio (or run `./bsvbits reinforce <1..10>`) to launch a **Track-Targeted CP Reinforcement Session** that procedurally generates fresh problems specifically reinforcing that track!
 
 ---
 
@@ -51,47 +55,48 @@ Open `http://localhost:8000` in your browser, or work directly in **VS Code** us
 
 | Command / Shortcut | Description |
 |---|---|
-| `./bsvbits list` | List all 79 curriculum problems across 8 tracks & solved status |
+| `./bsvbits list` | List all **342 curriculum problems across 10 tracks** & solved status |
 | `./bsvbits start <problem_id>` | Stage a problem into `workspace/current_problem.bsv` and `workspace/PROBLEM.md` |
 | `./bsvbits submit` *(or `Ctrl+Shift+B` in VS Code)* | Compile with `bsc`, co-simulate in `Bluesim`, and write waveform/AI report to `workspace/last_result.md` |
+| `./bsvbits reinforce <1..10>` | Launch a **Track-Targeted CP Reinforcement Session** for any Mode 1 Track (`1..10` or `track_id`) |
 | `./bsvbits daily` | Launch today's deterministic **Daily Hardware Challenge** into VS Code & Web Studio |
 | `./bsvbits session --time 20 --difficulty Mixed --count 3 --format all` | Generate a **Timed Practice Pack Session** tailored to your time budget, difficulty, and format |
-| `./bsvbits generate --difficulty Medium --format bug_fix_rtl` | Dynamically generate a single Competitive Arena problem (supports all 32 families & 5 formats) |
+| `./bsvbits generate --difficulty Medium --format bug_fix_rtl` | Dynamically generate a single Competitive Arena problem (supports all 80 families & 7 formats) |
 | `./bsvbits user <username>` | Switch the active shared user profile in SQLite (`workspace/bsvbits.db`) |
 | `./bsvbits hint` | Unlock progressive clues & live AST comparison against the Golden Solution |
 | `./bsvbits next` | Advance to the next curriculum problem |
 | `./bsvbits solution` | Inspect the Golden Reference BSV solution |
-| `python3 scripts/verify_curriculum.py` | Run automated `bsc` + `Bluesim` verification across all 79 curriculum problems & 32 CP generator families |
+| `python3 scripts/verify_curriculum.py` | Run automated `bsc` + `Bluesim` verification across all **342 curriculum problems & 80 CP generator families** |
 
 ---
 
-## Mode 1: Guided Progression (79 Stored Problems across 8 Tracks)
+## Mode 1: Guided Progression (342 Stored Problems across 10 Tracks)
 
-1. **Track 1: BSV Basics & Combinational Logic (15 Problems)**
-   - `01_wire_zero` to `07_seven_seg` + `01b_wire_passthrough`, `02b_nand_nor_xnor`, `03b_mux2to1`, `04b_sign_zero_extend`, `05b_equality_comparator`, `06b_CarryLookahead4`, `07b_comb_alu_flags_combo`, `07c_comb_barrel_shifter_combo`
-2. **Track 2: Strong Types, Enums, Structs & Vectors (11 Problems)**
-   - `08_enum_alu` to `11_vector_popcount` + `08b_typedef_synonyms`, `09b_tagged_union_instr`, `10b_tuple_swap_minmax`, `10c_maybe_register_Forward`, `11b_vector_reverse_rotate`, `11c_vector_map_fold_max`, `11d_types_packet_classifier_combo`
-3. **Track 3: Sequential Circuits, Registers & Atomic Rules (12 Problems)**
-   - `12_dff_reg` to `17_gcd_euclid` + `12b_reg_sync_load_clear`, `13b_mod_n_counter`, `14b_saturating_counter`, `15b_shift_reg_siso_piso`, `16b_pwm_controller`, `17b_seq_stopwatch_combo`
-4. **Track 4: Concurrency, Scheduling, Ehr, CRegs & Advanced FIFOs (11 Problems)**
-   - `18_conflict_updown` to `21_pipeline_skid_buffer` + `18b_rwire_bypass_forwarding`, `18c_dreg_pulse_generator`, `19b_urgency_arbiter_rules`, `19c_creg_3port_regfile`, `20b_bypass_lockstep_fifo`, `21b_getput_connectable_pipe`, `21c_fifo_gearbox_8to16_combo`
-5. **Track 5: Finite State Machines & StmtFSM (8 Problems)**
-   - `22_fsm_seq_1011` to `25_stmtfsm_burst` + `22b_mealy_vending_machine`, `23b_i2c_start_stop_fsm`, `24b_uart_rx_oversample`, `25b_fsm_cmd_processor_combo`
-6. **Track 6: Clock Domain Crossing (CDC), Resets & Multi-Clock Primitives (6 Problems)**
-   - `33_cdc_2ff_syncbit`, `34_cdc_toggle_pulse_sync`, `35_cdc_reset_stretcher`, `36_cdc_gray_counter_async`, `37_cdc_async_fifo_flags`, `38_cdc_mcp_handshake_combo`
-7. **Track 7: Hardware Verification, Testbenches & Property Checkers (6 Problems)**
-   - `39_verif_alu_scoreboard`, `40_verif_fifo_invariant_monitor`, `41_verif_arbiter_mutex_checker`, `42_verif_axi_handshake_monitor`, `43_verif_lfsr_coverage_tracker`, `44_verif_bug_hunt_fifo_fix`
-8. **Track 8: RTL Protocols & Computer Architecture (10 Problems)**
-   - `26_arbiter_rr4` to `32_mini_riscv_alu_pc` + `27b_apb3_slave_peripheral`, `28b_spi_master_shift`, `29b_noc_xy_router_flit`, `30b_cache_2way_lru`, `31b_branch_predictor_2bit_bht`, `31c_pipeline_forwarding_unit`, `32b_riscv_imm_decoder`
+| Track | Title | Problems | Highlights & Combination Labs |
+|---|---|---|---|
+| **Track 1** | **BSV Basics & Combinational Logic** | **47** | Wires, literals, Bool vs Bit, universal gates, 2:1/4:1/8:1 muxes, demux, encoders/decoders, ripple/carry-lookahead/carry-select adders, Gray/BCD/Excess-3 codecs, CLZ/CTZ, barrel shifters, ALU flags & `[Combo Lab]` syntheses |
+| **Track 2** | **Strong Types, Enums, Structs & Vectors** | **36** | `typedef enum`, `typedef struct`, `tagged union`, `Maybe#(t)`, `Tuple2`, `Vector` map/fold/scan/zip, SIMD nibble lanes, Hamming (7,4) SEC-DED ECC, 4x4 crossbars, IPv4/VLAN packet parsers & classifiers |
+| **Track 3** | **Sequential Circuits, Registers & Atomic Rules** | **38** | `mkReg`, `mkRegU`, `mkDReg`, up/down/modulo/saturating/BCD/Johnson/Gray/ping-pong counters, SISO/PISO/universal shift registers, LFSRs, serial/parallel CRC-8, Bresenham dividers, debouncers, PWM, watchdogs, exponential backoff & Euclid's GCD |
+| **Track 4** | **Concurrency, Scheduling, CReg/Ehr & Advanced FIFOs** | **36** | `PulseWire`, `mkPulseWireOR`, `RWire`, `descending_urgency`, `Ehr#(2, t)` / `CReg` multi-port registers & register files, `mkBypassFIFOF`, `mkPipelineFIFOF`, elastic skid buffers, `GetPut`/`Connectable`, 8:16 & 16:8 gearboxes, token-bucket policers & WFQ schedulers |
+| **Track 5** | **Finite State Machines, Serial Protocols & StmtFSM** | **32** | Moore/Mealy sequence detectors, traffic/elevator/vending/windowed-watchdog FSMs, UART 8N1 TX & oversampled RX, SPI Mode 0–3 master, I2C start/stop/address matcher, Manchester encoder, HDLC bit-stuffer, AXI burst engines & `StmtFSM` microcode |
+| **Track 6** | **Digital Arithmetic, VLSI Datapaths & DSP Engines** | **31** | Signed/unsigned saturating arithmetic, Q4.4 fixed-point MAC & LERP, Carry-Save (CSA) & Wallace trees, Radix-2 Booth & sequential multipliers, non-restoring divider, integer sqrt, CORDIC micro-rotations, 3-tap/4-tap FIR, EWMA/leaky-integrator IIR, 1D median filter & bitonic sorting networks |
+| **Track 7** | **Memory Subsystems, RegFiles, BRAMs, CAMs & Buffers** | **29** | Register RAMs, Read-First vs Write-First synchronous BRAMs, forwarding bypass RAMs, true dual-port & banked interleaved memories, binary CAM, ternary TCAM (ACL wildcard matching), circular buffers, LIFO call stack, bitmap free-list allocator, Bloom filter & Reorder Buffer (ROB) |
+| **Track 8** | **Clock Domain Crossing (CDC), Resets & Multi-Clock** | **26** | `Clocks` package principles: 2-FF/3-FF `SyncBit` chains, toggle `SyncPulse` synchronizers, async-assert/sync-deassert Reset Stretchers, glitch-free clock mux, Gray counters, Async FIFO Gray pointer full/empty/watermark comparators, 2-phase/4-phase MCP Req/Ack handshakes & credit return sync |
+| **Track 9** | **Hardware Verification, Scoreboards, SVA Monitors & Bug Hunts** | **29** | Self-checking ALU/FIFO/Credit conservation scoreboards, SVA bounded-liveness/mutex/AXI-stability assertion monitors, Gray single-bit step checkers, coverage bin trackers, plus **10 progressive `[Bug Hunt]` RTL debugging & repair labs** |
+| **Track 10** | **Interconnect Protocols, Caches & Computer Architecture** | **38** | Fixed/Round-Robin/Matrix arbiters, credit flow control, AMBA APB3, AXI4-Lite WSTRB slave, Wishbone, 2D XY & 3D XYZ NoC routers, Direct-Mapped / 2-Way LRU / Victim caches, 2-Bit BHT / Gshare / Tournament / Tagged branch predictors, Return Address Stack (RAS), 5-Stage forwarding & load-use stall units, Scoreboard, Tomasulo Reservation Station, 2-Way Superscalar Dual-Issue & **Mini RISC-V RV32I Core** |
 
 ---
 
-## Mode 2: Competitive Hardware Programming Arena (32 Procedural Families)
+## Mode 2: Competitive Hardware Programming Arena (80 Procedural Families × 7 Formats)
 
-- **Combinational & Bit-Manipulation**: Priority Encoders (`prio_encoder`), Binary/Gray/Parity Codecs (`gray_codec`), Barrel Rotators (`barrel_rotator`), Saturating DSP ALUs (`saturating_alu`), CLZ/CTZ Leading/Trailing Zero Detectors (`clz_ctz_detector`), One-Hot/Thermometer Codecs (`onehot_therm_codec`), Programmable Window Comparators (`window_comparator`), Configurable Multi-Lane Parity Generators (`crc_parity_gen`)
-- **Sequential, Counters & Timers**: Modulo-N Counters (`modulo_counter`), Programmable PWM Timers (`pwm_timer`), Saturating Up/Down Counters (`updown_sat_counter`), Johnson/Ring Counters (`johnson_ring_counter`), Galois LFSR Scramblers (`lfsr_scrambler`), N-Cycle Glitch Debouncers (`debounce_glitch_filter`), Programmable Watchdog Timers (`watchdog_timer`)
-- **Pipelines, FIFOs & Flow Control**: Guarded RegSlices (`regslice_transform`), Scaled MAC Engines (`mac_engine`), Credit Flow-Control Trackers (`skid_credit_fifo`), 8-to-16 Serializer Gearboxes (`gearbox_serializer`), Hardware Packet Firewalls (`packet_firewall`)
-- **FSMs & Controllers**: KMP Bit-Stream Sequence Detectors (`pattern_fsm`), Parameterized Mealy Vending FSMs (`vending_mealy_fsm`)
-- **Interconnect & Peripheral Protocols**: Custom-Permutation Masked Arbiters (`arbiter_perm`), Round-Robin Arbiters (`round_robin_arbiter`), AMBA APB3 Slave Peripherals (`apb_slave_periph`), AXI4-Lite Write Strobe Mergers (`axi_wstrb_merger`), 2D Mesh NoC XY Routers (`noc_xy_router`)
-- **Computer Architecture**: 2-Bit Saturating BHT Branch Predictors (`branch_predictor_bht`), 5-Stage Pipeline Hazard Forwarding Units (`pipeline_forwarding`)
-- **Hardware Verification & Assertion Monitors**: Arbiter Mutual-Exclusion Checkers (`verif_arbiter_checker`), AXI Ready/Valid Stability Monitors (`verif_axi_handshake`), FIFO Occupancy Conservation Monitors (`verif_fifo_conservation`)
+- **80 Parameterized Hardware Families across all 10 Tracks**:
+  - **Combinational & Bitwise (12 Families)**: `prio_encoder`, `clz_ctz_detector`, `onehot_therm_codec`, `gray_codec`, `crc_parity_gen`, `barrel_rotator`, `window_comparator`, `bit_reversal_permute`, `bcd_excess3_codec`, `carry_save_compressor`, `majority_voter_tmr`, `popcount_threshold`
+  - **Strong Types, SIMD Vectors, ECC & Crossbars (6 Families)**: `simd_vector_alu`, `hamming_secded_codec`, `crossbar_switch_4x4`, `prefix_scan_network`, `ipv4_header_validator`, `packet_firewall`
+  - **Sequential, Counters, LFSR, CRC & Timers (12 Families)**: `modulo_counter`, `updown_sat_counter`, `johnson_ring_counter`, `lfsr_scrambler`, `debounce_glitch_filter`, `pwm_timer`, `watchdog_timer`, `crc8_serial_parallel`, `clk_divider_fractional`, `ping_pong_wave_gen`, `exp_backoff_controller`, `piso_sipo_transceiver`
+  - **Concurrency, Ehr, FIFOs, Gearboxes & QoS (8 Families)**: `regslice_transform`, `skid_credit_fifo`, `gearbox_serializer`, `ehr_bypass_pipeline`, `token_bucket_shaper`, `wfq_weighted_scheduler`, `gearbox_16to8_unpacker`, `coalescing_irq_ctrl`
+  - **FSMs, Serial Protocols & Bus Controllers (7 Families)**: `pattern_fsm`, `vending_mealy_fsm`, `uart_rx_oversampler`, `spi_cpol_cpha_master`, `i2c_addr_matcher_fsm`, `hdlc_zero_stuffer_fsm`, `axi_burst_chopper_fsm`
+  - **Digital Arithmetic & DSP Datapaths (7 Families)**: `saturating_alu`, `mac_engine`, `q4_4_fixed_point_mac`, `cordic_stage_rotator`, `fir_3tap_symmetric`, `ewma_iir_filter`, `sorting_network_4elem`
+  - **Memory Subsystems, BRAM, CAM, TCAM, LIFO & Bloom (6 Families)**: `bram_write_first_bypass`, `cam_4entry_lookup`, `tcam_wildcard_matcher`, `lifo_hardware_stack`, `bitmap_freelist_alloc`, `bloom_filter_2hash`
+  - **Clock Domain Crossing & Multi-Clock (5 Families)**: `cdc_syncbit_chain`, `cdc_toggle_pulse_sync`, `cdc_reset_stretcher`, `cdc_async_fifo_gray_occ`, `cdc_mcp_req_ack_fsm`
+  - **Hardware Verification, SVA & Coverage (7 Families)**: `verif_arbiter_checker`, `verif_axi_handshake`, `verif_fifo_conservation`, `verif_bounded_liveness`, `verif_credit_conservation`, `verif_gray_transition`, `verif_coverage_bin_tracker`
+  - **Interconnect Protocols & Computer Architecture (10 Families)**: `arbiter_perm`, `round_robin_arbiter`, `apb_slave_periph`, `axi_wstrb_merger`, `noc_xy_router`, `noc_3d_xyz_router`, `branch_predictor_bht`, `gshare_branch_predictor`, `pipeline_forwarding`, `superscalar_dual_issue`
